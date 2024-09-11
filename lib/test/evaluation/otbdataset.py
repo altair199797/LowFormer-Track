@@ -1,7 +1,7 @@
 import numpy as np
 from lib.test.evaluation.data import Sequence, BaseDataset, SequenceList
 from lib.test.utils.load_text import load_text
-
+import os,sys
 
 class OTBDataset(BaseDataset):
     """ OTB-2015 dataset
@@ -248,5 +248,9 @@ class OTBDataset(BaseDataset):
             {"name": "Woman", "path": "Woman/img", "startFrame": 1, "endFrame": 597, "nz": 4, "ext": "jpg", "anno_path": "Woman/groundtruth_rect.txt",
              "object_class": "person"}
         ]
-    
+
+        # all_classes = os.listdir("/home/moritz/Research/MySMAT/output/test/tracking_results/mobilevitv2_track/mobilevitv2_256_128x1_ep300/")
+        # all_classes = [i.replace("_time","").replace(".txt","") for i in all_classes]
+        # all_classes = list(set(all_classes))
+        # sequence_info_list = [i for i in sequence_info_list if i["name"] in all_classes]
         return sequence_info_list
