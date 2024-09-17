@@ -11,7 +11,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from .base_functions import *
 
 # network related
-from lib.models.mobilevit_track.mobilevitv2_track import build_mobilevitv2_track
+from lib.models.mobilevit_track.mobilevitv2_track import build_mobilevitv2_track, build_lowformer_track
 
 # forward propagation related
 from lib.train.actors import MobileViTTrackActor
@@ -59,7 +59,9 @@ def run(settings):
 
     # Create network
     if settings.script_name == 'mobilevitv2_track':
-        net = build_mobilevitv2_track(cfg)
+        net = build_mobilevitv2_track(cfg, settings=settings)
+    elif settings.script_name == "lowformer_track":
+        net = build_lowformer_track(cfg, settings=settings)
     else:
         raise ValueError("illegal script name")
 

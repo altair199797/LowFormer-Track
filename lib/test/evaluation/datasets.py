@@ -33,6 +33,7 @@ dataset_dict = dict(
 def load_dataset(name: str):
     """ Import and load a single dataset."""
     name = name.lower()
+    # print(dataset_dict.keys())
     dset_info = dataset_dict.get(name)
     if dset_info is None:
         raise ValueError('Unknown dataset \'%s\'' % name)

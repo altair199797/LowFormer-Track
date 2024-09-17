@@ -23,7 +23,7 @@ class BaseEncoder(nn.Module):
         self.layer_2 = None
         self.layer_3 = None
         self.layer_4 = None
-
+        self.training_it = args[0]["training"]
         self.dilation = 1
 
     def check_model(self):
@@ -60,15 +60,18 @@ class BaseEncoder(nn.Module):
 
         # conv_1 (i.e., the first conv3x3 layer) output for
         x = self._forward_conv_layer(self.conv_1, x)
-        # z = self._forward_conv_layer(self.conv_1, z)
+        if self.training_it:
+            z = self._forward_conv_layer(self.conv_1, z)
 
         # layer_1 (i.e., MobileNetV2 block) output
         x = self._forward_conv_layer(self.layer_1, x)
-        # z = self._forward_conv_layer(self.layer_1, z)
+        if self.training_it:
+            z = self._forward_conv_layer(self.layer_1, z)
 
         # layer_2 (i.e., MobileNetV2 with down-sampling + 2 x MobileNetV2) output
         x = self._forward_conv_layer(self.layer_2, x)
-        # z = self._forward_conv_layer(self.layer_2, z)
+        if self.training_it:
+            z = self._forward_conv_layer(self.layer_2, z)
 
         # layer_3 (i.e., MobileNetV2 with down-sampling + 2 x Separable Mixed Attention block) output
         x, z = self._forward_MobileViT_layer(self.layer_3, x, z)

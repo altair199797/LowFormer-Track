@@ -29,8 +29,10 @@ def run_tracker(tracker_name, tracker_param, run_id=None, dataset_name='otb', se
     if sequence is not None:
         dataset = [dataset[sequence]]
 
-    trackers = [Tracker(tracker_name, tracker_param, dataset_name, run_id)]
+    print("Dataset init!")
+    trackers = [Tracker(tracker_name, tracker_param, dataset_name, run_id, testit=True)]
 
+    print("Tracker init!")
     run_dataset(dataset, trackers, debug, threads, num_gpus=num_gpus)
 
 
@@ -55,6 +57,8 @@ def main():
     run_tracker(args.tracker_name, args.tracker_param, args.runid, args.dataset_name, seq_name, args.debug,
                 args.threads, num_gpus=args.num_gpus)
 
+
+# python tracking/test.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300_coco --dataset lasot
 
 if __name__ == '__main__':
     main()
