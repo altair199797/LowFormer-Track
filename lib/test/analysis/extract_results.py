@@ -123,6 +123,10 @@ def extract_results(trackers, dataset, report_name, skip_missing_seq=False, plot
 
     valid_sequence = torch.ones(len(dataset), dtype=torch.uint8)
 
+
+    # /home/moritz/Research/SMAT/output/test/tracking_results/mobilevitv2_track/mobilevitv2_256_128x1_ep300_coco/otb/Matrix.txt
+    # /home/moritz/Research/SMAT/output/test/tracking_results/mobilevitv2_track/mobilevitv2_256_128x1_ep300_coco/otb/Matrix.txt
+
     for seq_id, seq in enumerate(tqdm(dataset)):
         # Load anno
         anno_bb = torch.tensor(seq.ground_truth_rect)
@@ -131,7 +135,6 @@ def extract_results(trackers, dataset, report_name, skip_missing_seq=False, plot
             # Load results
             base_results_path = '{}/{}'.format(trk.results_dir, seq.name)
             results_path = '{}.txt'.format(base_results_path)
-
             if os.path.isfile(results_path):
                 pred_bb = torch.tensor(load_text(str(results_path), delimiter=('\t', ','), dtype=np.float64))
             else:
@@ -141,9 +144,12 @@ def extract_results(trackers, dataset, report_name, skip_missing_seq=False, plot
                 else:
                     raise Exception('Result not found. {}'.format(results_path))
 
+            print("predbb:", pred_bb.shape, "anno:", anno_bb.shape)
             # Calculate measures
             err_overlap, err_center, err_center_normalized, valid_frame = calc_seq_err_robust(
                 pred_bb, anno_bb, seq.dataset, target_visible)
+
+            print(err_overlap.shape, err_center.shape, err_center_normalized.shape, valid_frame.shape)
 
             avg_overlap_all[seq_id, trk_id] = err_overlap[valid_frame].mean()
 

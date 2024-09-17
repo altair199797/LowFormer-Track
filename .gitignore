@@ -3,3 +3,4 @@ lib/train/admin/local.py
 *.pt
 output/
 *.pyc
+tensorboard/

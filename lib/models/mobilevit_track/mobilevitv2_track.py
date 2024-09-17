@@ -112,7 +112,7 @@ def build_lowformer_track(cfg, training=True):
     return model
      
 
-def build_mobilevitv2_track(cfg, training=True):
+def build_mobilevitv2_track(cfg, settings=None, training=True):
     current_dir = os.path.dirname(os.path.abspath(__file__))  # This is your Project Root
     pretrained_path = os.path.join(current_dir, '../../../pretrained_models')
     if cfg.MODEL.PRETRAIN_FILE and training:
@@ -122,7 +122,7 @@ def build_mobilevitv2_track(cfg, training=True):
 
     if "mobilevitv2" in cfg.MODEL.BACKBONE.TYPE:
         width_multiplier = float(cfg.MODEL.BACKBONE.TYPE.split('-')[-1])
-        backbone = create_mobilevitv2_backbone(pretrained, width_multiplier, has_mixed_attn=cfg.MODEL.BACKBONE.MIXED_ATTN)
+        backbone = create_mobilevitv2_backbone(pretrained, width_multiplier, has_mixed_attn=cfg.MODEL.BACKBONE.MIXED_ATTN, training=training)
         if cfg.MODEL.BACKBONE.MIXED_ATTN is True:
             backbone.mixed_attn = True
         else:
@@ -170,11 +170,23 @@ def build_mobilevitv2_track(cfg, training=True):
                                                              "what those missing keys are!"
 
         print('Load pretrained model from: ' + cfg.MODEL.PRETRAIN_FILE)
+    
+    # print("cfg:",cfg)
+    # print("settings:",str(settings), vars(settings))
+    # settings.save_dir
+    # ckfolder = os.path.join("output/checkpoints/",settings.project_path)
+    # cks = os.listdir(ckfolder)
+    # if len(cks)>0 and False:
+    #     ck_chosen = sorted(cks, key=lambda x: int(x.split("ep")[-1].replace(".pth.tar","")))[-1]
+    #     ckpath = os.path.join(ckfolder,ck_chosen)
+    #     checkpoint = torch.load(ckpath, map_location="cpu")
+    #     missing_keys, unexpected_keys = model.load_state_dict(checkpoint["net"], strict=False)
+    #     print("Checkpoint loaded from:", ckpath)
 
     return model
 
 
-def create_mobilevitv2_backbone(pretrained, width_multiplier, has_mixed_attn):
+def create_mobilevitv2_backbone(pretrained, width_multiplier, has_mixed_attn, training=False):
     """
     function to create an instance of MobileViT backbone
     Args:
@@ -192,6 +204,7 @@ def create_mobilevitv2_backbone(pretrained, width_multiplier, has_mixed_attn):
     opts['conv_layer_normalization_name'] = 'batch_norm'
     opts['conv_layer_activation_name'] = 'relu'
     opts['mixed_attn'] = has_mixed_attn
+    opts["training"] = training
     model = MobileViTv2_backbone(opts)
 
     if pretrained:

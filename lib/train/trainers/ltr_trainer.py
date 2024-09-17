@@ -178,6 +178,7 @@ class LTRTrainer(BaseTrainer):
         print("Avg Forward Time: %.5f" % (self.avg_forward_time / self.num_frames * batch_size))
 
     def train_epoch(self):
+        print("New Epoch started!")
         """Do one epoch for each loader."""
         for loader in self.loaders:
             if self.epoch % loader.epoch_interval == 0:

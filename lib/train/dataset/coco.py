@@ -48,7 +48,7 @@ class MSCOCO(BaseImageDataset):
         super().__init__('COCO', root, image_loader)
 
         self.img_pth = os.path.join(root, 'images/{}{}/'.format(split, version))
-        self.anno_path = os.path.join(root, 'annotations/instances_{}{}.json'.format(split, version))
+        self.anno_path = os.path.join(root, 'annotations_trainval2017/instances_{}{}.json'.format(split, version))
 
         self.coco_set = COCO(self.anno_path)
 

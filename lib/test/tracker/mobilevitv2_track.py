@@ -20,10 +20,23 @@ from lib.utils.ce_utils import generate_mask_cond
 
 class MobileViTv2Track(BaseTracker):
 
-    def __init__(self, params, dataset_name):
+    def __init__(self, params, dataset_name, test=False):
         super(MobileViTv2Track, self).__init__(params)
-        network = build_mobilevitv2_track(params.cfg, training=False)
-        network.load_state_dict(torch.load(self.params.checkpoint, map_location='cpu')['net'], strict=True)
+
+        network = build_mobilevitv2_track(params.cfg, training=False)        
+        
+        if test:
+            ckpath = self.params.checkpoint.split("/")[:-1]
+            ckpath = "/".join(ckpath)
+            cks = os.listdir(ckpath)
+            ck_chosen = sorted(cks,key= lambda x: int(x.split("ep")[-1].replace(".pth.tar","")))[-1]
+            ckpath = os.path.join(ckpath,ck_chosen)
+            network.load_state_dict(torch.load(ckpath, map_location='cpu')['net'], strict=True)
+            print("loaded checkpoint at:", ckpath)
+            print("EPOCH:",int(ck_chosen.split("ep")[-1].replace(".pth.tar","")))
+        else:
+            network.load_state_dict(torch.load(self.params.checkpoint, map_location='cpu')['net'], strict=True)
+        
         self.cfg = params.cfg
         if self.cfg.TEST.DEVICE == 'cpu':
             self.device = 'cpu'
