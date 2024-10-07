@@ -317,11 +317,22 @@ def get_size(start_path = '.'):
 
     return total_size
 
-# def main2():
-#     total_size = 0
-#     for seq in sequence_list:
+# 49018630865
+def main2():
+    total_size = 0
+    input_path = "/media/TBDataNAS/Visual\ Object\ Tracking/LaSOTBenchmark"
+    input_path = os.path.join("/media", "TBDataNAS","Visual Object Tracking", "LaSOTBenchmark")
 
+    for seq in sequence_list:
+        print(seq)
+        class_name = seq.split("-")[0]
+        inpa = os.path.join(input_path,class_name,seq)
+        print(inpa)
+        # print(len(os.listdir(inpa)))
+        total_size += get_size(inpa)
+
+    print(total_size)
 
 if __name__ == "__main__":
-    main()
-    # main2()
+    # main()
+    main2()
