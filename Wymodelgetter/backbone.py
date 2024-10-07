@@ -5,7 +5,7 @@
 import torch, os, sys
 import torch.nn as nn
 
-from ops import (
+from Wymodelgetter.ops import (
     ConvLayer,
     DSConv,
     LowFormerBlock,
@@ -17,8 +17,10 @@ from ops import (
     ResidualBlock,
     SMConvLayer,
 )
-from utils import build_kwargs_from_config
+from Wymodelgetter.utils import build_kwargs_from_config
 import torchvision.utils as tutils
+from typing import Tuple, List, Dict
+
 
 __all__ = [
     "LowFormerBackbone",
@@ -37,8 +39,8 @@ __all__ = [
 class LowFormerBackbone(nn.Module):
     def __init__(
         self,
-        width_list: list[int],
-        depth_list: list[int],
+        width_list: List[int],
+        depth_list: List[int],
         in_channels=3,
         dim=32,
         expand_ratio=4,
@@ -95,6 +97,7 @@ class LowFormerBackbone(nn.Module):
         self.old_way_norm = old_way_norm
         stage_num = 0
         self.max_stage_id = 8
+        self.ret_stages = 1
         
         ## STEM stage
         self.input_stem = [
@@ -268,7 +271,6 @@ class LowFormerBackbone(nn.Module):
                 if vitafter22:
                     stage.append(LowFormerBlock(
                         in_channels=in_channels,
-                        dim=dim,
                         expand_ratio=expand_ratio,
                         norm=norm,
                         act_func=act_func,
@@ -277,21 +279,11 @@ class LowFormerBackbone(nn.Module):
                         newhdim=fastitv4,
                         bb_convattention=bb_convattention,
                         bb_convin2=bb_convin2,
-                        mscale=mscale,
                         grouping=grouping,
                         convcomb=convcomb,
                         stage_num=stage_num,
-                        bb_smbconv=bb_smbconv == "all" or bb_smbconv == "vitblocks",
-                        sha=False,
-                        add_smconv=add_smconv,
-                        smconv_pos=smconv_pos,
-                        smconv_dw=smconv_dw,
                         actit=actit,
                         head_dim_mul=head_dim_mul,
-                        only_smconv=only_smconv,
-                        new_smbconv=new_smbconv,
-                        old_way=old_way,
-                        old_way_norm=old_way_norm,
                         just_unfused=just_unfused,
                         noattention=noattention,
                         nostrideatt=nostrideatt,
@@ -353,7 +345,6 @@ class LowFormerBackbone(nn.Module):
                 stage.append(
                     LowFormerBlock(
                         in_channels=in_channels,
-                        dim=dim,
                         expand_ratio=2 if fastitv3 or smallit else expand_ratio, #TODO
                         norm=norm,
                         act_func=act_func,
@@ -366,19 +357,9 @@ class LowFormerBackbone(nn.Module):
                         grouping=grouping,
                         convcomb=convcomb,
                         stage_num=stage_num,
-                        bb_smbconv=bb_smbconv == "all" or bb_smbconv == "vitblocks",
                         sha=sha and stage_num > 2,
-                        add_smconv=add_smconv,
-                        smconv_pos=smconv_pos,
-                        without_mbconv=noattmbconv,
-                        smconv_dw=smconv_dw,
-                        bb_nosm=bb_nosm,
                         actit=actit,
                         head_dim_mul=(head_dim_mul or fastit) and not nohdimmul, #TODO
-                        only_smconv=only_smconv,
-                        new_smbconv=new_smbconv,
-                        old_way=old_way,
-                        old_way_norm=old_way_norm,
                         just_unfused=just_unfused,
                         noattention=noattention,
                         nostrideatt=nostrideatt,
@@ -495,8 +476,17 @@ class LowFormerBackbone(nn.Module):
                         new_smbconv=new_smbconv,
                     )
         return block
+    def remove_stages(self, n):
+        if n == 0:
+            return
+        self.stages = self.stages[:-n]
+        self.max_stage_id = 4 - n
 
-    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+    def return_stages(self, n):
+        assert n>0, n    
+        self.ret_stages = n
+    
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         # if x.shape[0] > 5:
         #     if not os.path.exists("dump_data"):
         #         os.makedirs("dump_data")
@@ -511,20 +501,39 @@ class LowFormerBackbone(nn.Module):
         #             tutils.save_image(data[i,:],fold+"img.png")
         #     dropmap(x)
 
+        if False:
+            output_dict = {}#{"input": x}
+            output_dict["stage0"] = x = self.input_stem(x)
+            temp = 0
+            for stage_id, stage in enumerate(self.stages, start=1):
+                if stage_id > self.max_stage_id:
+                    break
+                output_dict["stage%d" % stage_id] = x = stage(x)
+                temp = stage_id
+            # output_dict["stage_final"] = self.stages[-1](x)
+            output_dict["stage_final"] = output_dict.pop("stage%d" % temp)
+            return output_dict["stage_final"]
+        else:
+            if self.ret_stages == 1:
+                x = self.input_stem(x)
+                for stage_id, stage in enumerate(self.stages, start=1):
+                    if stage_id > self.max_stage_id:
+                        break
+                    x = stage(x)
+                return x
+            else:
+                x = self.input_stem(x)
+                out_dict = {}
+                for stage_id, stage in enumerate(self.stages, start=1):
+                    if stage_id > self.max_stage_id:
+                        break
+                    x = stage(x)
+                    if stage_id >= len(self.stages) - (self.ret_stages-1):
+                        out_dict[stage_id] = x
+                
+                return out_dict
 
-        output_dict = {}#{"input": x}
-        output_dict["stage0"] = x = self.input_stem(x)
-        temp = 0
-        for stage_id, stage in enumerate(self.stages, start=1):
-            if stage_id > self.max_stage_id:
-                break
-            output_dict["stage%d" % stage_id] = x = stage(x)
-            temp = stage_id
-        # output_dict["stage_final"] = self.stages[-1](x)
-        output_dict["stage_final"] = output_dict.pop("stage%d" % temp)
-
-        return output_dict
-
+        
 
 def efficientvit_backbone_b0(**kwargs) -> LowFormerBackbone:
     backbone = LowFormerBackbone(
@@ -679,11 +688,11 @@ def efficientvit_backbone_b3(**kwargs) -> LowFormerBackbone:
 class EfficientViTLargeBackbone(nn.Module):
     def __init__(
         self,
-        width_list: list[int],
-        depth_list: list[int],
-        block_list: list[str] or None = None,
-        expand_list: list[float] or None = None,
-        fewer_norm_list: list[bool] or None = None,
+        width_list: List[int],
+        depth_list: List[int],
+        block_list: List[str] or None = None,
+        expand_list: List[float] or None = None,
+        fewer_norm_list: List[bool] or None = None,
         in_channels=3,
         qkv_dim=32,
         norm="bn2d",
@@ -810,7 +819,7 @@ class EfficientViTLargeBackbone(nn.Module):
             raise ValueError(block)
         return block
 
-    def forward(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
         output_dict = {"input": x}
         for stage_id, stage in enumerate(self.stages):
             output_dict["stage%d" % stage_id] = x = stage(x)

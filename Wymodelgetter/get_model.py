@@ -1,14 +1,14 @@
 import os, sys, yaml, torch
 from copy import deepcopy
-from cls import efficientvit_cls_b0, lowformer_cls_b1, efficientvit_cls_b2, efficientvit_cls_b3, efficientvit_cls_l1, efficientvit_cls_l2, efficientvit_cls_l3, LowFormerCls
-
+from Wymodelgetter.cls import efficientvit_cls_b0, lowformer_cls_b1, efficientvit_cls_b2, efficientvit_cls_b3, efficientvit_cls_l1, efficientvit_cls_l2, efficientvit_cls_l3, LowFormerCls
+from typing import Dict, List, Tuple
 
 def load_config(filename: str) -> dict:
     """Load a yaml file."""
     filename = os.path.realpath(os.path.expanduser(filename))
     return yaml.load(open(filename), Loader=SafeLoaderWithTuple)
 
-def partial_update_config(config: dict, partial_config: dict) -> dict:
+def partial_update_config(config: Dict, partial_config: Dict) -> Dict:
     for key in partial_config:
         if key in config and isinstance(partial_config[key], dict) and isinstance(config[key], dict):
             partial_update_config(config[key], partial_config[key])
@@ -82,9 +82,10 @@ def create_cls_model(name: str, pretrained=True, weight_url: str or None = None,
                 model.load_state_dict(weight)
     except Exception as e:
         print("Model weights could not be loaded!!!!!!!!!!!!!!!!!!!",e)
+        assert False
     return model
 
-def load_state_dict_from_file(file: str, only_state_dict=True) -> dict[str, torch.Tensor]:
+def load_state_dict_from_file(file: str, only_state_dict=True) -> Dict[str, torch.Tensor]:
     file = os.path.realpath(os.path.expanduser(file))
     checkpoint = torch.load(file, map_location="cpu")
     if "epoch" in checkpoint:
@@ -94,19 +95,30 @@ def load_state_dict_from_file(file: str, only_state_dict=True) -> dict[str, torc
     return checkpoint
 
 
-def get_lowformer(config_path="Wymodelgetter/configs/b1.yaml", checkpoint_path="Wymodelgetter/checkpoints/b1/evalmodel.pt", less_layers=0):
+def get_lowformer(config_path="Wymodelgetter/configs/b3.yaml", checkpoint_path="Wymodelgetter/checkpoints/b3/evalmodel.pt", cfg=None):
     
     config = setup_exp_config(config_path, recursive=True, opt_args=None)
     
-    model = create_cls_model(weight_url=checkpoint_path, pretrained=True, less_layers=less_layers, torchscriptsave=False, **config["net_config"])
+    model = create_cls_model(weight_url=checkpoint_path, pretrained=True, less_layers=0, torchscriptsave=False, **config["net_config"])
     
     model = model.backbone
-    model.max_stage_id = 4
+    if cfg.MODEL.OLDWAY:
+        model.max_stage_id = 3
+    else:
+        if cfg.MODEL.LOW_FEAT_FUSE:
+            model.return_stages(n=2)
+        elif cfg.MODEL.BB_STAGE_LAST:
+            pass
+        else:
+            model.remove_stages(n=1)
     # print(model)
     inp = torch.randn(1,3,224,224)
     out = model(inp)
-    print(out.keys())
-    print(out[list(out.keys())[-1]].shape)
+    try:
+        print("Init | Backbone output shape:",out.shape)
+    except:
+        print(out[list(out.keys())[-1]].shape)
+    # print("Init | Backbone output shape:",out.shape)
     return model
 
 if __name__ == "__main__":

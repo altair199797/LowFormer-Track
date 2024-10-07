@@ -2,8 +2,9 @@ import torch.nn as nn
 from inspect import signature
 import torch
 from functools import partial
+from typing import List, Dict
 
-def build_kwargs_from_config(config: dict, target_func: callable) -> dict[str, any]:
+def build_kwargs_from_config(config: Dict, target_func: callable) -> Dict[str, any]:
     valid_keys = list(signature(target_func).parameters)
     kwargs = {}
     for key in config:
@@ -11,7 +12,7 @@ def build_kwargs_from_config(config: dict, target_func: callable) -> dict[str, a
             kwargs[key] = config[key]
     return kwargs
 
-REGISTERED_ACT_DICT: dict[str, type] = {
+REGISTERED_ACT_DICT: Dict[str, type] = {
     "relu": nn.ReLU,
     "relu6": nn.ReLU6,
     "hswish": nn.Hardswish,
@@ -37,7 +38,7 @@ class LayerNorm2d(nn.LayerNorm):
         return out
 
 # register normalization function here
-REGISTERED_NORM_DICT: dict[str, type] = {
+REGISTERED_NORM_DICT: Dict[str, type] = {
     "bn2d": nn.BatchNorm2d,
     "ln": nn.LayerNorm,
     "ln2d": LayerNorm2d,
@@ -75,7 +76,7 @@ def get_same_padding(kernel_size: int or tuple[int, ...]) -> int or tuple[int, .
 def resize(
     x: torch.Tensor,
     size: any or None = None,
-    scale_factor: list[float] or None = None,
+    scale_factor: List[float] or None = None,
     mode: str = "bicubic",
     align_corners: bool or None = False,
 ) -> torch.Tensor:
@@ -93,16 +94,16 @@ def resize(
         raise NotImplementedError(f"resize(mode={mode}) not implemented.")
 
 
-def list_sum(x: list) -> any:
+def list_sum(x: List) -> any:
     return x[0] if len(x) == 1 else x[0] + list_sum(x[1:])
 
-def val2list(x: list or tuple or any, repeat_time=1) -> list:
-    if isinstance(x, (list, tuple)):
+def val2list(x: List or tuple or any, repeat_time=1) -> List:
+    if isinstance(x, (List, tuple)):
         return list(x)
     return [x for _ in range(repeat_time)]
 
 
-def val2tuple(x: list or tuple or any, min_len: int = 1, idx_repeat: int = -1) -> tuple:
+def val2tuple(x: List or tuple or any, min_len: int = 1, idx_repeat: int = -1) -> tuple:
     x = val2list(x)
 
     # repeat elements if necessary

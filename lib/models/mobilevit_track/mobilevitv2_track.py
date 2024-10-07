@@ -92,25 +92,7 @@ class MobileViTv2_Track(nn.Module):
             raise NotImplementedError
 
 
-def build_lowformer_backbone():
-    pass
 
-def build_lowformer_head():
-    pass 
-
-def build_lowformer_track(cfg, training=True):
-    backbone = build_lowformer_backbone()
-
-    head = build_lowformer_head()
-
-    model = build_tracker_model()
-
-    if 'lowformer_track' in cfg.MODEL.PRETRAIN_FILE and training:
-        pass
-        # load tracking checkpoint!
-    
-    return model
-     
 
 def build_mobilevitv2_track(cfg, settings=None, training=True):
     current_dir = os.path.dirname(os.path.abspath(__file__))  # This is your Project Root

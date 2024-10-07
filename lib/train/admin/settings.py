@@ -9,5 +9,5 @@ class Settings:
     def set_default(self):
         self.env = env_settings()
         self.use_gpu = True
-        self.save_every_epoch = True
+        self.save_every_epoch = False
 

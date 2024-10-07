@@ -6,10 +6,10 @@ import torch
 import torch.ao.quantization
 import torch.nn as nn
 
-from backbone import LowFormerBackbone, EfficientViTLargeBackbone
-from ops import ConvLayer, LinearLayer, OpSequential
-from utils import build_kwargs_from_config
-
+from Wymodelgetter.backbone import LowFormerBackbone, EfficientViTLargeBackbone
+from Wymodelgetter.ops import ConvLayer, LinearLayer, OpSequential
+from Wymodelgetter.utils import build_kwargs_from_config
+from typing import List, Dict, Tuple
 __all__ = [
     "LowFormerCls",
     ######################
@@ -24,58 +24,58 @@ __all__ = [
 ]
 
 
-# class ClsHead(OpSequential):
-#     def __init__(
-#         self,
-#         in_channels: int,
-#         width_list: list[int],
-#         n_classes=1000,
-#         dropout=0.0,
-#         norm="bn2d",
-#         act_func="hswish",
-#         fid="stage_final",
-#     ):
-#         ops = [
-#             ConvLayer(in_channels, width_list[0], 1, norm=norm, act_func=act_func),
-#             nn.AdaptiveAvgPool2d(output_size=1),
-#             LinearLayer(width_list[0], width_list[1], False, norm="ln", act_func=act_func, squeeze_it=True),
-#             LinearLayer(width_list[1], n_classes, True, dropout, None, None),
-#         ]
-#         super().__init__(ops)
-
-#         self.fid = fid
-
-#     def forward(self, feed_dict: dict[str, torch.Tensor]) -> torch.Tensor:
-#         x = feed_dict[self.fid]
-#         return OpSequential.forward(self, x)
-
-
-class ClsHead(nn.Module):
+class ClsHead(OpSequential):
     def __init__(
         self,
         in_channels: int,
-        width_list: list[int],
+        width_list: List[int],
         n_classes=1000,
         dropout=0.0,
         norm="bn2d",
         act_func="hswish",
         fid="stage_final",
     ):
-        super().__init__()
         ops = [
             ConvLayer(in_channels, width_list[0], 1, norm=norm, act_func=act_func),
             nn.AdaptiveAvgPool2d(output_size=1),
             LinearLayer(width_list[0], width_list[1], False, norm="ln", act_func=act_func, squeeze_it=True),
             LinearLayer(width_list[1], n_classes, True, dropout, None, None),
         ]
-        self.opseq = OpSequential(ops)
+        super().__init__(ops)
 
         self.fid = fid
 
-    def forward(self, feed_dict: dict[str, torch.Tensor]) -> torch.Tensor:
+    def forward(self, feed_dict: Dict[str, torch.Tensor]) -> torch.Tensor:
         x = feed_dict[self.fid]
-        return self.opseq(x)
-        # return OpSequential.forward(self, x)
+        return OpSequential.forward(self, x)
+
+
+# class ClsHead(nn.Module):
+#     def __init__(
+#         self,
+#         in_channels: int,
+#         width_list: List[int],
+#         n_classes=1000,
+#         dropout=0.0,
+#         norm="bn2d",
+#         act_func="hswish",
+#         fid="stage_final",
+#     ):
+#         super().__init__()
+#         ops = [
+#             ConvLayer(in_channels, width_list[0], 1, norm=norm, act_func=act_func),
+#             nn.AdaptiveAvgPool2d(output_size=1),
+#             LinearLayer(width_list[0], width_list[1], False, norm="ln", act_func=act_func, squeeze_it=True),
+#             LinearLayer(width_list[1], n_classes, True, dropout, None, None),
+#         ]
+#         self.opseq = OpSequential(ops)
+
+#         self.fid = fid
+
+#     def forward(self, feed_dict: Dict[str, torch.Tensor]) -> torch.Tensor:
+#         x = feed_dict[self.fid]
+#         return self.opseq(x)
+#         # return OpSequential.forward(self, x)
 
 
 
@@ -99,7 +99,7 @@ class LowFormerCls(nn.Module):
 
 
 def lowformer_cls_b1(**kwargs) -> LowFormerCls:
-    from backbone import lowformer_backbone_b1
+    from Wymodelgetter.backbone import lowformer_backbone_b1
     
     
     

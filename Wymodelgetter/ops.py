@@ -8,10 +8,10 @@ import torch.nn.functional as F
 from torch.cuda.amp import autocast
 import torchvision.utils as tutils
 
-from utils import build_act
-from utils import build_norm
-from utils import get_same_padding, list_sum, resize, val2list, val2tuple
-
+from Wymodelgetter.utils import build_act
+from Wymodelgetter.utils import build_norm
+from Wymodelgetter.utils import get_same_padding, list_sum, resize, val2list, val2tuple
+from typing import Tuple, Dict, List
 
 __all__ = [
     "ConvLayer",
@@ -103,7 +103,7 @@ class UpSampleLayer(nn.Module):
     def __init__(
         self,
         mode="bicubic",
-        size: int or tuple[int, int] or list[int] or None = None,
+        size: int or Tuple[int, int] or List[int] or None = None,
         factor=2,
         align_corners=False,
     ):
@@ -593,7 +593,7 @@ class LiteMLA(nn.Module):
         norm=(None, "bn2d"),
         act_func=(None, None),
         kernel_func="relu",
-        scales: tuple[int, ...] = (5,),
+        scales: Tuple[int, ...] = (5,),
         eps=1.0e-15,
     ):
         super(LiteMLA, self).__init__()
@@ -1072,10 +1072,7 @@ class LowFormerBlock(nn.Module):
     def __init__(
         self,
         in_channels: int,
-        heads_ratio: float = 1.0,
-        dim=32,
         expand_ratio: float = 4,
-        scales=(5,),
         norm="bn2d",
         act_func="hswish",
         fuseconv=False,
@@ -1091,13 +1088,6 @@ class LowFormerBlock(nn.Module):
         stage_num=-1,
         bb_smbconv=False,
         sha=False,
-        add_smconv=False,
-        smconv_pos="befAtt",
-        without_mbconv=False,
-        smconv_dw=False,
-        bb_nosm=False,
-        only_smconv=False,
-        old_way=False,
         new_smbconv=False,
         old_way_norm=False,
         just_unfused=False,
@@ -1106,32 +1096,8 @@ class LowFormerBlock(nn.Module):
         mlpremoved=False,
     ):
         super(LowFormerBlock, self).__init__()
-        self.old_way = old_way
-        self.add_smconv = add_smconv
-        self.smconv_pos = smconv_pos
-        # ConvAttention(input_dim=in_channels, num_heads=max(1,in_channels//30), att_stride=2 if stage_num==4 else 1, att_kernel=5 if stage_num==4 else 3)
-        block = SMConvLayer(
-                        in_channels=in_channels,
-                        out_channels=in_channels,
-                        norm=norm,
-                        act_func=act_func,
-                        smconv_dw=smconv_dw,
-                        bb_nosm=bb_nosm,
-                    )
-        smconv_module =  ResidualBlock(block, IdentityLayer())
 
-
-        context_module = ResidualBlock(
-            LiteMLA(
-                in_channels=in_channels,
-                out_channels=in_channels,
-                heads_ratio=heads_ratio,
-                dim=dim,
-                norm=(None, norm),
-                scales=scales,
-            ),
-            IdentityLayer(),
-        )
+      
         if bb_convattention:# and not noattention:
             # Params
             attvers = ConvCombAttention if convcomb else ConvAttention 
@@ -1196,45 +1162,21 @@ class LowFormerBlock(nn.Module):
                 bb_smbconv=bb_smbconv,
                 new_smbconv=new_smbconv,
             )
-        if only_smconv:
-            local_module = SMConvLayer(
-                        in_channels=in_channels,
-                        out_channels=in_channels,
-                        norm=norm,
-                        act_func=act_func,
-                        smconv_dw=smconv_dw,
-                    )
+        
         local_module = ResidualBlock(local_module, IdentityLayer())
-        if without_mbconv:
-            local_module = IdentityLayer()
+
         
         # if noattention:
         #     context_module = nn.Identity()
             
-            
-        if old_way:
-            self.context_module = context_module
-            self.local_module = local_module
-        else:
-            self.total = nn.Sequential(context_module, local_module)
-            if self.add_smconv:
-                if self.smconv_pos == "befAtt":
-                    self.total = nn.Sequential(smconv_module, context_module, local_module)
-                elif smconv_pos == "aftAtt":
-                    self.total = nn.Sequential(context_module, smconv_module, local_module)
-                elif smconv_pos == "aftMBconv":
-                    self.total = nn.Sequential(context_module, local_module, smconv_module)
+        self.total = nn.Sequential(context_module, local_module)
+           
             
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # befAtt|aftAtt|aftMBconv
         # x = self.context_module(x)
         # x = self.local_module(x)
-        if self.old_way:
-            assert False
-            x = self.context_module(x)
-            x = self.local_module(x)
-        else:
-            x = self.total(x)
+        x = self.total(x)
         return x
 
 
@@ -1289,11 +1231,11 @@ class ResidualConcatLayer(nn.Module):
 class DAGBlock(nn.Module):
     def __init__(
         self,
-        inputs: dict[str, nn.Module],
+        inputs: Dict[str, nn.Module],
         merge: str,
         post_input: nn.Module or None,
         middle: nn.Module,
-        outputs: dict[str, nn.Module],
+        outputs: Dict[str, nn.Module],
     ):
         super(DAGBlock, self).__init__()
 
@@ -1307,7 +1249,7 @@ class DAGBlock(nn.Module):
         self.output_keys = list(outputs.keys())
         self.output_ops = nn.ModuleList(list(outputs.values()))
 
-    def forward(self, feature_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def forward(self, feature_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         feat = [op(feature_dict[key]) for key, op in zip(self.input_keys, self.input_ops)]
         if self.merge == "add":
             feat = list_sum(feat)
@@ -1324,7 +1266,7 @@ class DAGBlock(nn.Module):
 
 
 class OpSequential(nn.Module):
-    def __init__(self, op_list: list[nn.Module or None]):
+    def __init__(self, op_list: List[nn.Module or None]):
         super(OpSequential, self).__init__()
         valid_op_list = []
         for op in op_list:

@@ -169,6 +169,7 @@ def get_optimizer_scheduler(net, cfg):
                 "lr": cfg.TRAIN.LR * cfg.TRAIN.BACKBONE_MULTIPLIER,
             },
         ]
+        #print(param_dicts)
         if is_main_process():
             print("Learnable parameters are shown below.")
             for n, p in net.named_parameters():

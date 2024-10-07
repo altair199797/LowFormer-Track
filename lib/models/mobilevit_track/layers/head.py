@@ -1,5 +1,5 @@
 import torch.nn as nn
-import torch
+import torch, sys
 import torch.nn.functional as F
 
 from .frozen_bn import FrozenBatchNorm2d
@@ -594,16 +594,20 @@ class MLPCenterPredictor(nn.Module, ):
 
     def forward(self, x, gt_score_map=None):
         """ Forward pass with input x. """
+
         x = x.flatten(2).permute(0, 2, 1)
+        # print("scoremap input:", x.shape) # torch.Size([1, 256, 160])      
         score_map_ctr, size_map, offset_map = self.get_score_map(x)
+        # print("output:", score_map_ctr.shape) # output: torch.Size([1, 1, 16, 16])  
+        # print("size/offset:",size_map.shape, offset_map.shape) # torch.Size([1, 2, 16, 16])    
 
-        # assert gt_score_map is None
+
         if gt_score_map is None:
-            bbox = self.cal_bbox(score_map_ctr, size_map, offset_map)
+            bbox, max_score = self.cal_bbox(score_map_ctr, size_map, offset_map, return_score=True)
         else:
-            bbox = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map)
+            bbox, max_score = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map, return_score=True)
 
-        return score_map_ctr, bbox, size_map, offset_map
+        return score_map_ctr, bbox, size_map, offset_map, max_score
 
     def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
@@ -644,10 +648,13 @@ class MLPCenterPredictor(nn.Module, ):
             y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
             return y
 
+        # print(x.shape)
         score_map_ctr = x # ctr branch
         for i, layer in enumerate(self.layers_ctr):
+            # print(score_map_ctr.shape) ---> torch.Size([1, 256, 160])
             score_map_ctr = F.relu(layer(score_map_ctr)) if i < self.num_layers - 1 else layer(score_map_ctr)
         score_map_ctr = score_map_ctr.permute(0, 2, 1)
+        # print(score_map_ctr.shape,self.feat_sz)
         score_map_ctr = score_map_ctr.view(*score_map_ctr.shape[:2], self.feat_sz, self.feat_sz)
 
         score_map_offset = x # offset branch
