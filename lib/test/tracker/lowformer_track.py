@@ -1,6 +1,6 @@
 import math
 
-from lib.models.mobilevit_track.mobilevitv2_track import build_mobilevitv2_track
+from lib.models.mobilevit_track.lowformer_track import build_lowformer_track
 from lib.test.tracker.basetracker import BaseTracker
 import torch
 import torch.nn.functional as F
@@ -23,7 +23,10 @@ class MobileViTv2Track(BaseTracker):
     def __init__(self, params, dataset_name, test=False, args=None):
         super(MobileViTv2Track, self).__init__(params)
 
-        network = build_mobilevitv2_track(params.cfg, training=False)        
+        network = build_lowformer_track(params.cfg, training=False)        
+
+        # assert False
+        
         self.args = args
         if test:
             if args.ckpos == -10:
@@ -86,26 +89,11 @@ class MobileViTv2Track(BaseTracker):
         self.z_patch_arr = z_patch_arr
         template = self.preprocessor.process(z_patch_arr, z_amask_arr)
 
-        # pre-compute the template features corresponding to first three of the tracker model (for speed-up)
-        with torch.no_grad():
-            # conv_1 (i.e., the first conv3x3 layer) output for
-            z = self.network.backbone.conv_1.forward(template.tensors.to(self.device))
-
-            # layer_1 (i.e., MobileNetV2 block) output
-            z = self.network.backbone.layer_1.forward(z)
-
-            # layer_2 (i.e., MobileNetV2 with down-sampling + 2 x MobileNetV2) output
-            z = self.network.backbone.layer_2.forward(z)
-
-            self.z_dict1 = z
-            # print("z:",z, template.tensors.shape)
-
-
+        self.z_dict_list =  [template.tensors.to(self.device), template.tensors.to(self.device).clone()] # torch.Size([1, 3, 128, 128])
         self.box_mask_z = None
 
         # save states
-        self.state = info['init_bbox']
-        # print("state:", self.state)
+        self.state = info['init_bbox']  ## just initial boundingbox
         self.frame_id = 0
         if self.save_all_boxes:
             '''save all predicted boxes'''
@@ -115,16 +103,23 @@ class MobileViTv2Track(BaseTracker):
     def track(self, image, info: dict = None):
         H, W, _ = image.shape
         self.frame_id += 1
+
+        ### Sample Search Image
         x_patch_arr, resize_factor, x_amask_arr = sample_target(image, self.state, self.params.search_factor,
                                                                 output_sz=self.params.search_size)  # (x1, y1, w, h)
         search = self.preprocessor.process(x_patch_arr, x_amask_arr)
 
+            
+        ### Input everything into the network
         with torch.no_grad():
-            x_dict = search
             # merge the template and the search
-            out_dict = self.network.forward(
-                template=self.z_dict1.to(self.device), search=x_dict.tensors.to(self.device))
+            # out_dict = self.network.forward(
+            #     template=self.z_dict1.to(self.device), search=x_dict.tensors.to(self.device))
+            merged_image = torch.cat([search.tensors.to(self.device),torch.cat(self.z_dict_list,dim=-1).to(self.device)],dim=-2)
+            out_dict = self.network(merged_image)
 
+        
+        ### Postprocess Model Output
         pred_score_map = out_dict['score_map']
 
         # add hann windows
@@ -139,6 +134,15 @@ class MobileViTv2Track(BaseTracker):
         # get the final box result
         self.state = clip_box(best_bbox, H, W, margin=10)
 
+
+
+        if self.cfg.MODEL.TEMPORAL_TEMPLATE and out_dict["max_score"] > 0.8:
+            
+            z_patch_arr, resize_factor, z_amask_arr = sample_target(image, self.state, self.params.template_factor,
+                                                    output_sz=self.params.template_size)
+            template = self.preprocessor.process(z_patch_arr, z_amask_arr)
+            self.z_dict_list[1] = template.tensors.to(self.device)
+            
         """
         # visualize the search region with tracker bbox
         cv2.rectangle(image, (int(best_bbox[0]), int(best_bbox[1])),

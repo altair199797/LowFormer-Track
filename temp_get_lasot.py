@@ -1,7 +1,9 @@
 
-sequence_list = ['airplane-1',
-                         'airplane-9',
-                         'airplane-13',
+
+def get_seqlist():
+    sequence_list = ['airplane-1',
+                            'airplane-9',
+                            'airplane-13',
                          'airplane-15',
                          'basketball-1',
                          'basketball-6',
@@ -279,14 +281,19 @@ sequence_list = ['airplane-1',
                          'volleyball-13',
                          'volleyball-18',
                          'volleyball-19']
+    return sequence_list
 
 import os, sys
 
 def main():
-
     output_path = "/home/moritz/Research/datasets/LaSOT/test"
     input_path = "/media/TBDataNAS/Visual\ Object\ Tracking/LaSOTBenchmark"
+    sequence_list = get_seqlist()
+    # sequence_list = sequence_list[::-1]
+    # sequence_list = sequence_list[::-1]
 
+    # print(len(sequence_list))
+    sequence_list = sequence_list[::-1]
     for seq in sequence_list:
         class_name = seq.split("-")[0]
         inpa = os.path.join(input_path,class_name,seq)
@@ -294,10 +301,14 @@ def main():
         if not os.path.exists(outpa):
             os.makedirs(outpa)
         
-        cmd = "scp -r moritz@158.110.40.61:\"" + inpa + "\"  " + outpa
-        print(cmd)
+        cmd = "scp -r moritz@158.110.40.61:\"" + inpa + "\"  " + outpa 
+        # print(cmd)
+        # echo <password> | sudo -S <command>
+        # cmd = " sudo rsync -a moritz@158.110.40.61:\"" + inpa + "/ \" " + outpa + "/ "
 
+        print(cmd)
         os.system(cmd)
+        # break
         # import subprocess
 
         # p = subprocess.Popen([cmd], 

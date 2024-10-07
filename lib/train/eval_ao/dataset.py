@@ -70,6 +70,8 @@ class DatasetBuilder():
 
     def compute_test_results(self, results_path):
         self.results_path = results_path
+        # print("in it (resultpath):", self.results_path)
+        # print(len(self.seqs_info))
         for seq in self.seqs_info:
             # print(seq)
             seq_gt_info = self.seqs_info[seq]
@@ -77,6 +79,7 @@ class DatasetBuilder():
 
             delimiter_seq = find_delimiter(os.path.join(results_path, self.dataset_name, seq+'.txt'))
             tracker_pred = np.loadtxt(os.path.join(results_path, self.dataset_name, seq+'.txt'), delimiter=delimiter_seq)
+            # print(gt_anno_data.shape, tracker_pred.shape)
 
             aor_ = np.mean(self.compute_aor(gt_anno_data, tracker_pred))
             fr_ = 1 - np.mean(self.compute_sr(gt_anno_data, tracker_pred))

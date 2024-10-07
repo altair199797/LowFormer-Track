@@ -37,7 +37,8 @@ def parse_args():
 
     return args
 
-
+# python tracking/train.py --script mobilevitv2_track --config mobilevitv2_256_128x1_ep300_coco --save_dir ./output --mode single
+# python tracking/train.py --script lowformer_track --config lowformer_256_128x1_ep300_lasot_b15 --save_dir ./output --mode single
 def main():
     args = parse_args()
     if args.mode == "single":

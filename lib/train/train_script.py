@@ -11,10 +11,11 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from .base_functions import *
 
 # network related
-from lib.models.mobilevit_track.mobilevitv2_track import build_mobilevitv2_track, build_lowformer_track
+from lib.models.mobilevit_track.mobilevitv2_track import build_mobilevitv2_track
+from lib.models.mobilevit_track.lowformer_track import build_lowformer_track
 
 # forward propagation related
-from lib.train.actors import MobileViTTrackActor
+from lib.train.actors import MobileViTTrackActor, LowFormerTrackActor
 # for import modules
 import importlib
 
@@ -82,6 +83,11 @@ def run(settings):
         objective = {'giou': giou_loss, 'l1': l1_loss, 'focal': focal_loss, 'cls': BCEWithLogitsLoss()}
         loss_weight = {'giou': cfg.TRAIN.GIOU_WEIGHT, 'l1': cfg.TRAIN.L1_WEIGHT, 'focal': 1., 'cls': 1.0}
         actor = MobileViTTrackActor(net=net, objective=objective, loss_weight=loss_weight, settings=settings, cfg=cfg)
+    elif settings.script_name == "lowformer_track":
+        focal_loss = FocalLoss()
+        objective = {'giou': giou_loss, 'l1': l1_loss, 'focal': focal_loss, 'cls': BCEWithLogitsLoss()}
+        loss_weight = {'giou': cfg.TRAIN.GIOU_WEIGHT, 'l1': cfg.TRAIN.L1_WEIGHT, 'focal': 1., 'cls': 1.0}
+        actor = LowFormerTrackActor(net=net, objective=objective, loss_weight=loss_weight, settings=settings, cfg=cfg)
     else:
         raise ValueError("illegal script name")
 
@@ -90,8 +96,16 @@ def run(settings):
 
     # Optimizer, parameters, and learning rates
     optimizer, lr_scheduler = get_optimizer_scheduler(net, cfg)
+    
+    from lib.models.mobilevit_track.lowformer_track import show_params_flops
+    try:
+        show_params_flops(net, cfg)
+    except:
+        print("PARAS(M):", "%.2f" %(sum([p.numel() for p in net.parameters() if p.requires_grad])/1_000_000))
+    
     use_amp = getattr(cfg.TRAIN, "AMP", False)
     trainer = LTRTrainer(actor, [loader_train, loader_val], optimizer, settings, lr_scheduler, use_amp=use_amp)
+    # trainer = LTRTrainer(actor, [loader_val], optimizer, settings, lr_scheduler, use_amp=use_amp)
 
     # train process
     trainer.train(cfg.TRAIN.EPOCH, load_latest=True, fail_safe=True)

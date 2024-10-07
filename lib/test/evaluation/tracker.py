@@ -34,7 +34,7 @@ class Tracker:
     """
 
     def __init__(self, name: str, parameter_name: str, dataset_name: str, run_id: int = None, display_name: str = None,
-                 result_only=False, testit=False):
+                 result_only=False, testit=False, args=None):
         assert run_id is None or isinstance(run_id, int)
 
         self.name = name
@@ -45,6 +45,7 @@ class Tracker:
 
         # Added by Moritz
         self.testit = testit
+        self.args = args
 
         env = env_settings()
         if self.run_id is None:
@@ -63,7 +64,7 @@ class Tracker:
             self.tracker_class = None
 
     def create_tracker(self, params):
-        tracker = self.tracker_class(params, self.dataset_name, test=self.testit)
+        tracker = self.tracker_class(params, self.dataset_name, test=self.testit, args=self.args)
         return tracker
 
     def run_sequence(self, seq, debug=None):

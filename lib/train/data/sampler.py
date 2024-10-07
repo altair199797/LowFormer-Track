@@ -162,7 +162,7 @@ class TrackingSampler(torch.utils.data.Dataset):
                                    'test_class': meta_obj_test.get('object_class_name')})
                 # make data augmentation
                 data = self.processing(data)
-
+                
                 # check whether data is valid
                 valid = data['valid']
             except:

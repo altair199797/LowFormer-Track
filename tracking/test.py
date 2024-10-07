@@ -12,7 +12,7 @@ from lib.test.evaluation.tracker import Tracker
 
 
 def run_tracker(tracker_name, tracker_param, run_id=None, dataset_name='otb', sequence=None, debug=0, threads=0,
-                num_gpus=8):
+                num_gpus=8, force_eval=False, args=None):
     """Run tracker on sequence or dataset.
     args:
         tracker_name: Name of tracking method.
@@ -30,10 +30,10 @@ def run_tracker(tracker_name, tracker_param, run_id=None, dataset_name='otb', se
         dataset = [dataset[sequence]]
 
     print("Dataset init!")
-    trackers = [Tracker(tracker_name, tracker_param, dataset_name, run_id, testit=True)]
+    trackers = [Tracker(tracker_name, tracker_param, dataset_name, run_id, testit=True, args=args)]
 
     print("Tracker init!")
-    run_dataset(dataset, trackers, debug, threads, num_gpus=num_gpus)
+    run_dataset(dataset, trackers, debug, threads, num_gpus=num_gpus, force_eval=force_eval)
 
 
 def main():
@@ -46,6 +46,9 @@ def main():
     parser.add_argument('--debug', type=int, default=0, help='Debug level.')
     parser.add_argument('--threads', type=int, default=0, help='Number of threads.')
     parser.add_argument('--num_gpus', type=int, default=1)
+    parser.add_argument("--force_eval", action="store_true", default=False)
+    parser.add_argument('--ckpos', type=int, default=-1)
+    
 
     args = parser.parse_args()
 
@@ -55,10 +58,12 @@ def main():
         seq_name = args.sequence
 
     run_tracker(args.tracker_name, args.tracker_param, args.runid, args.dataset_name, seq_name, args.debug,
-                args.threads, num_gpus=args.num_gpus)
+                args.threads, num_gpus=args.num_gpus, force_eval=args.force_eval, args=args)
 
 
-# python tracking/test.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300_coco --dataset lasot
+# python tracking/test.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300_coco --dataset otb --force_eval
+
+# python tracking/test.py --tracker_name lowformer_track --tracker_param lowformer_256_128x1_ep300_lasot_b15 --dataset LaSOT --force_eval --threads 5
 
 if __name__ == '__main__':
     main()

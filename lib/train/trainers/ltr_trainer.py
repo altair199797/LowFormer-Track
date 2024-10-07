@@ -118,9 +118,10 @@ class LTRTrainer(BaseTrainer):
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
 
+            # print("Before",loader.training, i, len(loader), i==len(loader))
             # compute the AOR and SR values for got10k-val dataset (currently supported under single-GPU training only)
             if loader.training is False and i == len(loader) \
-                    and self.settings.local_rank == -1 and self.epoch % 10 == 0:
+                    and self.settings.local_rank == -1 and self.epoch % 5 == 0 :
 
                 # 0. Save the model to a temporary folder
                 tmp_folder = os.path.join('tmp_folder', self.settings.cfg_file.split('/')[-1].split('.')[0])
@@ -153,10 +154,15 @@ class LTRTrainer(BaseTrainer):
                 # 4. Compute AOR, SR values
                 self.dataset_builder_obj.compute_test_results(tmp_folder_path)
                 ao_, sr_0p50_ = self.dataset_builder_obj.summarize_tracker_results()
-
+                # print("val out:",ao_, sr_0p50_)
                 # 5. Write the results to tensorboard
                 stats['ValMetric/AOR'] = ao_
                 stats['ValMetric/SR_0.5'] = sr_0p50_
+            else:
+                pass
+                # stats.pop('ValMetric/AOR')
+                # stats.pop('ValMetric/SR_0.5')
+                
 
             # update statistics
             batch_size = data['template_images'].shape[loader.stack_dim]
