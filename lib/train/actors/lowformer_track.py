@@ -81,6 +81,7 @@ class LowFormerTrackActor(BaseActor):
         if torch.isnan(pred_boxes).any():
             raise ValueError("Network outputs is NAN! Stop Training")
         num_queries = pred_boxes.size(1)
+        # print(pred_boxes.shape)
         pred_boxes_vec = box_cxcywh_to_xyxy(pred_boxes).view(-1, 4)  # (B,N,4) --> (BN,4) (x1,y1,x2,y2)
         gt_boxes_vec = box_xywh_to_xyxy(gt_bbox)[:, None, :].repeat((1, num_queries, 1)).view(-1, 4).clamp(min=0.0,
                                                                                                            max=1.0)  # (B,4) --> (B,1,4) --> (B,N,4)
@@ -91,12 +92,26 @@ class LowFormerTrackActor(BaseActor):
             giou_loss, iou = torch.tensor(0.0).cuda(), torch.tensor(0.0).cuda()
 
         # compute l1 loss
+        # print(pred_boxes_vec.shape, gt_boxes_vec.shape)
         l1_loss = self.objective['l1'](pred_boxes_vec, gt_boxes_vec)  # (BN,4) (BN,4)
+
         # compute location loss
-        if 'score_map' in pred_dict:
+        if 'score_map' in pred_dict and not pred_dict["score_map"] is None :
             location_loss = self.objective['focal'](pred_dict['score_map'], gt_gaussian_maps)
         else:
             location_loss = torch.tensor(0.0, device=l1_loss.device)
+        
+        if "grid_map" in pred_dict and not pred_dict["grid_map"] is None:
+            loss_fn = torch.nn.CrossEntropyLoss()
+            grid_cells_n = self.cfg.DATA.SEARCH.SIZE // self.cfg.MODEL.BACKBONE.STRIDE
+            temp_indices = ((gt_boxes_vec[:,1]*grid_cells_n).int()*grid_cells_n + (gt_boxes_vec[:,0]*grid_cells_n).int()).long()
+            gt_map = torch.nn.functional.one_hot(temp_indices, num_classes=grid_cells_n*grid_cells_n).float()
+            # print( temp_indices,  gt_bbox, gt_map.shape, pred_dict["grid_map"].shape)
+            # print(pred_dict["grid_map"])
+            # print("IAM HERE")
+            location_loss = loss_fn(pred_dict["grid_map"],gt_map) * 0.1
+        
+        
         # weighted sum
         loss = self.loss_weight['giou'] * giou_loss + self.loss_weight['l1'] * l1_loss + self.loss_weight['focal'] * location_loss
         if return_status:

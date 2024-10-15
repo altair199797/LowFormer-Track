@@ -26,7 +26,7 @@ class MobileViTv2Track(BaseTracker):
         network = build_mobilevitv2_track(params.cfg, training=False)        
         self.args = args
         if test:
-            if args.ckpos == -10:
+            if args is None or args.ckpos == -10:
                 pass
             else:
                 ckpath = self.params.checkpoint.split("/")[:-1]

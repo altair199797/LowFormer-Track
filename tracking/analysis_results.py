@@ -12,9 +12,12 @@ import os, sys
 
 parser = argparse.ArgumentParser(description='Run tracker on sequence or dataset.')
 parser.add_argument('--dataset', default="otb", type=str, help='Name of config file.')
+parser.add_argument('--datasetadd', default="", type=str, help='Name of config file.')
+
 parser.add_argument('--runid', default=None, type=int, help='Name of config file.')
 parser.add_argument('--track_arch', default="lowformer", type=str, help='Name of config file.')
 parser.add_argument('--add', default="", type=str, help='Name of config file.')
+parser.add_argument('--config', default="", type=str, help='Name of config file.')
 
 
 # parser.add_argument('tracker_param', type=str, help='Name of config file.')
@@ -28,9 +31,14 @@ trackers = []
 
 chosen_model = "mobilevitv2_256_128x1_ep300"
 chosen_model = "mobilevitv2_256_128x1_ep300_coco"
-#chosen_model = "mobilevitv2_256_128x1_ep300_mine"
+chosen_model = "mobilevitv2_256_128x1_ep300_mine"
 chosen_model = args.track_arch
-chosen_model += "_256_128x1_ep300_"+args.dataset+"_b15" + args.add
+chosen_model += "_256_128x1_ep300_"+args.dataset+ args.datasetadd +"_b15" + args.add
+
+if len(args.config):
+    chosen_model = args.config
+    args.track_arch = args.config.split("_")[0]
+    
 
 trackers.extend(trackerlist(name=args.track_arch+'_track', parameter_name=chosen_model, dataset_name=args.dataset, run_ids=args.runid))
 trackers[0].results_dir =  os.path.join(trackers[0].results_dir,args.dataset.replace("_test","").lower())

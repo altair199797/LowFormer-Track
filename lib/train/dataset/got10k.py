@@ -71,7 +71,9 @@ class Got10k(BaseVideoDataset):
 
         self.sequence_meta_info = self._load_meta_info()
         self.seq_per_class = self._build_seq_per_class()
-
+        
+        # print(self.seq_per_class, self.seq_per_class.keys())
+        
         self.class_list = list(self.seq_per_class.keys())
         self.class_list.sort()
 

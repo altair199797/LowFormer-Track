@@ -95,6 +95,117 @@ class Corner_Predictor(nn.Module):
         else:
             return exp_x, exp_y
 
+class StrideHeadSPredictor(nn.Module, ):
+    def __init__(self, inplanes=64, channel=256, feat_sz=20, stride=16, freeze_bn=False):
+        super(StrideHeadSPredictor, self).__init__()
+        self.feat_sz = feat_sz
+        self.stride = stride
+        self.img_sz = self.feat_sz * self.stride
+
+        # corner predict
+        self.conv1_ctr = conv(inplanes, channel, freeze_bn=freeze_bn, stride=2)
+        self.conv2_ctr = conv(channel, channel, freeze_bn=freeze_bn, stride=2)
+        self.conv3_ctr = conv(channel, channel , freeze_bn=freeze_bn, stride=2)
+        self.conv4_ctr = conv(channel , channel , freeze_bn=freeze_bn, stride=2)
+        self.conv5_ctr = nn.Conv2d(channel, feat_sz**2, kernel_size=1)
+
+        # offset regress
+        self.conv1_offset = conv(inplanes, channel, freeze_bn=freeze_bn, stride=2)
+        self.conv2_offset = conv(channel, channel, freeze_bn=freeze_bn, stride=2)
+        self.conv3_offset = conv(channel , channel, freeze_bn=freeze_bn, stride=2)
+        self.conv4_offset = conv(channel , channel , freeze_bn=freeze_bn, stride=2)
+        self.conv5_offset = nn.Conv2d(channel, 2, kernel_size=1)
+
+        # size regress
+        self.conv1_size = conv(inplanes, channel, freeze_bn=freeze_bn, stride=2)
+        self.conv2_size = conv(channel, channel , freeze_bn=freeze_bn, stride=2)
+        self.conv3_size = conv(channel, channel , freeze_bn=freeze_bn, stride=2)
+        self.conv4_size = conv(channel , channel , freeze_bn=freeze_bn, stride=2)
+        self.conv5_size = nn.Conv2d(channel , 2, kernel_size=1)
+
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    # # x: [1, 480,16, 16]
+    def forward(self, x, gt_score_map=None):
+        """ Forward pass with input x. """
+        pred_grid, pred_size, pred_offset = self.get_score_map(x)
+
+        # assert gt_score_map is None
+        if gt_score_map is None:
+            bbox, max_score = self.cal_bbox(pred_grid, pred_size, pred_offset, return_score=True)
+        else:
+            assert False
+            bbox, max_score = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map, return_score=True)
+
+        return None, bbox, pred_size, pred_offset, max_score, pred_grid.flatten(1)
+
+
+    def cal_bbox(self, pred_grid, pred_size, pred_offset, return_score=False):
+        # print("pred grid:",pred_grid.shape)
+        max_score, idx = torch.max(pred_grid.flatten(1), dim=1, keepdim=True)
+        idx_y = idx // self.feat_sz
+        idx_x = idx % self.feat_sz
+
+        # idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
+        size = pred_size#.flatten(2).gather(dim=2, index=idx)
+        offset = pred_offset #offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+
+        # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
+        #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
+        # print(size.shape, idx_x.shape, offset.shape)
+        # cx, cy, w, h
+        bbox = torch.cat([(idx_x.to(torch.float) + offset[:, :1]) / self.feat_sz,
+                          (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
+                          size.squeeze(-1)], dim=1)
+
+        if return_score:
+            return bbox, max_score
+        return bbox
+
+    def get_pred(self, score_map_ctr, size_map, offset_map):
+        assert False, "haven't worked over this method! -Moritz"
+        max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
+        idx_y = idx // self.feat_sz
+        idx_x = idx % self.feat_sz
+
+        idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
+        size = size_map.flatten(2).gather(dim=2, index=idx)
+        offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+
+        # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
+        #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
+        return size * self.feat_sz, offset
+
+    def get_score_map(self, x):
+
+        def _sigmoid(x):
+            y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
+            return y
+
+        # ctr branch
+        x_ctr1 = self.conv1_ctr(x)
+        x_ctr2 = self.conv2_ctr(x_ctr1)
+        x_ctr3 = self.conv3_ctr(x_ctr2)
+        x_ctr4 = self.conv4_ctr(x_ctr3)
+        pred_grid = self.conv5_ctr(x_ctr4).reshape(-1, self.feat_sz, self.feat_sz)
+
+        # offset branch
+        x_offset1 = self.conv1_offset(x)
+        x_offset2 = self.conv2_offset(x_offset1)
+        x_offset3 = self.conv3_offset(x_offset2)
+        x_offset4 = self.conv4_offset(x_offset3)
+        pred_offset = self.conv5_offset(x_offset4).reshape(-1,2)
+
+        # size branch
+        x_size1 = self.conv1_size(x)
+        x_size2 = self.conv2_size(x_size1)
+        x_size3 = self.conv3_size(x_size2)
+        x_size4 = self.conv4_size(x_size3)
+        pred_size = self.conv5_size(x_size4).reshape(-1,2)
+        
+        return pred_grid, _sigmoid(pred_size), pred_offset
 
 class CenterPredictor(nn.Module, ):
     def __init__(self, inplanes=64, channel=256, feat_sz=20, stride=16, freeze_bn=False):
@@ -128,19 +239,20 @@ class CenterPredictor(nn.Module, ):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x, gt_score_map=None):
+    def forward(self, x):
         """ Forward pass with input x. """
         score_map_ctr, size_map, offset_map = self.get_score_map(x)
 
         # assert gt_score_map is None
-        if gt_score_map is None:
-            bbox = self.cal_bbox(score_map_ctr, size_map, offset_map)
+        if True:
+            bbox, max_score = self.cal_bbox(score_map_ctr, size_map, offset_map)
         else:
-            bbox = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map)
+            assert False
+            bbox, max_score = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map, return_score=True)
 
-        return score_map_ctr, bbox, size_map, offset_map
+        return score_map_ctr, bbox, size_map, offset_map, max_score, None
 
-    def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
+    def cal_bbox(self, score_map_ctr, size_map, offset_map):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
         idx_y = idx // self.feat_sz
         idx_x = idx % self.feat_sz
@@ -156,9 +268,8 @@ class CenterPredictor(nn.Module, ):
                           (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
                           size.squeeze(-1)], dim=1)
 
-        if return_score:
-            return bbox, max_score
-        return bbox
+        return bbox, max_score
+
 
     def get_pred(self, score_map_ctr, size_map, offset_map):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
@@ -173,11 +284,13 @@ class CenterPredictor(nn.Module, ):
         #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
         return size * self.feat_sz, offset
 
+    def _sigmoid(self, x):
+        y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
+        return y
+    
     def get_score_map(self, x):
 
-        def _sigmoid(x):
-            y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
-            return y
+
 
         # ctr branch
         x_ctr1 = self.conv1_ctr(x)
@@ -199,7 +312,7 @@ class CenterPredictor(nn.Module, ):
         x_size3 = self.conv3_size(x_size2)
         x_size4 = self.conv4_size(x_size3)
         score_map_size = self.conv5_size(x_size4)
-        return _sigmoid(score_map_ctr), _sigmoid(score_map_size), score_map_offset
+        return self._sigmoid(score_map_ctr), self._sigmoid(score_map_size), score_map_offset
 
 
 class CenterPredictor_shared(nn.Module, ):
@@ -564,6 +677,129 @@ class CenterPredictorLite_shared(nn.Module, ):
 
         return _sigmoid(score_map_ctr), _sigmoid(score_map_size), score_map_offset
 
+
+class AvgPoolCenterPredictor(nn.Module, ):
+    def __init__(self, input_dim, hidden_dim, num_layers, feat_sz=16, stride=16, BN=False, expand=4, spatial=True):
+        super(AvgPoolCenterPredictor, self).__init__()
+        self.num_layers = num_layers
+        hidden_dim *= expand 
+        h = [hidden_dim] * (num_layers - 2)
+        self.feat_sz = feat_sz
+        self.stride = stride
+        self.img_sz = self.feat_sz * self.stride
+
+        self.spatial = spatial
+        if spatial:
+            self.prefilter = nn.Sequential(nn.Linear( feat_sz*int(feat_sz*1.5),  feat_sz*int(feat_sz*1.5)*2), nn.ReLU(),nn.Linear( feat_sz*int(feat_sz*1.5)*2, 1))
+        #     input_dim = input_dim * feat_sz*int(feat_sz*1.5)
+        #               grid    xy-offset  size   score
+        output_dim = feat_sz**2 +  2  +    2   +    1
+        self.predict_everything = [nn.Sequential(nn.Linear(n, k), nn.ReLU()) for n, k in zip([input_dim] + h , h + [h[-1]] )]
+        self.predict_everything += [nn.Linear(hidden_dim,output_dim)]
+        self.predict_everything = nn.Sequential(*self.predict_everything)
+        # if BN:
+        #     self.layers_ctr = nn.ModuleList(nn.Sequential(nn.Linear(n, k), nn.BatchNorm1d(k))
+        #                                 for n, k in zip([input_dim] + h, h + [1]))
+        #     self.layers_offset = nn.ModuleList(nn.Sequential(nn.Linear(n, k), nn.BatchNorm1d(k))
+        #                                 for n, k in zip([input_dim] + h, h + [2]))
+        #     self.layers_size = nn.ModuleList(nn.Sequential(nn.Linear(n, k), nn.BatchNorm1d(k))
+        #                                 for n, k in zip([input_dim] + h, h + [2]))
+        # else:
+        #     self.layers_ctr = nn.ModuleList(nn.Linear(n, k)
+        #                                 for n, k in zip([input_dim] + h, h + [1]))
+        #     self.layers_offset = nn.ModuleList(nn.Linear(n, k)
+        #                                 for n, k in zip([input_dim] + h, h + [2]))
+        #     self.layers_size = nn.ModuleList(nn.Linear(n, k)
+                                        # for n, k in zip([input_dim] + h, h + [2]))
+
+
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def interpret_logits(self, logits):
+        grid = logits[:,:self.feat_sz**2]
+        indices = grid.argmax(dim=1,keepdim=True)
+        xy_offset = logits[:,self.feat_sz**2:self.feat_sz**2+2]
+        size = logits[:,self.feat_sz**2+2:self.feat_sz**2+4]
+        score = logits[:,self.feat_sz**2+4:self.feat_sz**2+5]
+
+        return indices, xy_offset, size, score, grid
+        ### CONTINUE TODO
+
+
+    def forward(self, x, gt_score_map=None):
+        """ Forward pass with input x. """
+
+        x = x.flatten(2).permute(0, 2, 1)
+        # print("scoremap input:", x.shape) # torch.Size([1, 256, 160])      
+        # score_map_ctr, size_map, offset_map = self.get_score_map(x)
+        if self.spatial:
+            x = self.prefilter(x.permute(0,2,1)).squeeze(-1)
+        else:
+            x = x.mean(dim=1).squeeze(1)
+        everything = self.get_score_map(x)
+        indices, xy_offset, size, score, grid_map = self.interpret_logits(everything)
+        # print("output:", score_map_ctr.shape) # output: torch.Size([1, 1, 16, 16])  
+        # print("size/offset:",size_map.shape, offset_map.shape) # torch.Size([1, 2, 16, 16])    
+
+
+        if gt_score_map is None:
+            bbox, max_score = self.cal_bbox(indices, xy_offset, size, score, return_score=True)
+        else:
+            assert False
+            bbox, max_score = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map, return_score=True)
+
+        return None, bbox, None, None, max_score, grid_map
+
+    def cal_bbox(self, indices, xy_offset, size, score, return_score=False):
+        # score_map_ctr, size_map, offset_map,
+        # max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
+
+        idx_y = indices // self.feat_sz
+        idx_x = indices % self.feat_sz
+
+        # idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
+        # size = size_map.flatten(2).gather(dim=2, index=idx)
+        # offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+
+        # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
+        #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
+        # cx, cy, w, h
+        # print("idx shape",idx_x, idx_y, indices, xy_offset, size)
+        bbox = torch.cat([(idx_x.to(torch.float) + xy_offset[:, :1]) / self.feat_sz,
+                          (idx_y.to(torch.float) + xy_offset[:, 1:]) / self.feat_sz,
+                          size], dim=1)
+        # print(bbox)
+        if return_score:
+            return bbox, score
+        return bbox
+
+    def get_pred(self, score_map_ctr, size_map, offset_map):
+        max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
+        idx_y = idx // self.feat_sz
+        idx_x = idx % self.feat_sz
+
+        idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
+        size = size_map.flatten(2).gather(dim=2, index=idx)
+        offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+
+        # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
+        #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
+        return size * self.feat_sz, offset
+
+    def get_score_map(self, x):
+
+        def _sigmoid(x):
+            y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
+            return y
+
+
+        return self.predict_everything(x)
+
+     
+
+
 class MLPCenterPredictor(nn.Module, ):
     def __init__(self, input_dim, hidden_dim, num_layers, feat_sz=16, stride=16, BN=False):
         super(MLPCenterPredictor, self).__init__()
@@ -592,6 +828,7 @@ class MLPCenterPredictor(nn.Module, ):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
+    # x: [1, 480,16, 16]
     def forward(self, x, gt_score_map=None):
         """ Forward pass with input x. """
 
@@ -607,7 +844,7 @@ class MLPCenterPredictor(nn.Module, ):
         else:
             bbox, max_score = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map, return_score=True)
 
-        return score_map_ctr, bbox, size_map, offset_map, max_score
+        return score_map_ctr, bbox, size_map, offset_map, max_score, None
 
     def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
@@ -758,7 +995,12 @@ def build_box_head(cfg, hidden_dim):
         else:
             raise ValueError()
         return corner_head
-
+    elif cfg.MODEL.HEAD.TYPE.strip() == "STRIDEHEAD":
+        in_channel = hidden_dim
+        channel = getattr(cfg.MODEL, "NUM_CHANNELS", 256)
+        feat_sz = int(cfg.DATA.SEARCH.SIZE / stride)
+        stride_head = StrideHeadSPredictor(inplanes=in_channel, channel=channel, feat_sz=feat_sz, stride=stride)
+        return stride_head
     elif "CENTER" in cfg.MODEL.HEAD.TYPE:
         if cfg.MODEL.HEAD.TYPE == "CENTER":
             in_channel = hidden_dim
@@ -795,7 +1037,11 @@ def build_box_head(cfg, hidden_dim):
             feat_sz = int(cfg.DATA.SEARCH.SIZE / stride)
             center_head = MLPCenterPredictor(hidden_dim, hidden_dim, num_layers=3, feat_sz=feat_sz,
                                              stride=stride)  # dim_in, dim_hidden, dim_out, 3 layers
-
+        elif cfg.MODEL.HEAD.TYPE == "APCENTER":
+            feat_sz = int(cfg.DATA.SEARCH.SIZE / stride)
+            center_head = AvgPoolCenterPredictor(hidden_dim, hidden_dim, num_layers=4, feat_sz=feat_sz,
+                                             stride=stride)  # dim_in, dim_hidden, dim_out, 3 layers
+            
         elif cfg.MODEL.HEAD.TYPE == "CENTER_SSAT" or "CENTER_SSAT_LITE":
             feat_sz = int(cfg.DATA.SEARCH.SIZE / stride)
             config = {"cls":{

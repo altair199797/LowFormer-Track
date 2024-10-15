@@ -187,7 +187,7 @@ class LTRLoader(torch.utils.data.dataloader.DataLoader):
 
         super(LTRLoader, self).__init__(dataset, batch_size, shuffle, sampler, batch_sampler,
                  num_workers, collate_fn, pin_memory, drop_last,
-                 timeout, worker_init_fn, prefetch_factor=6)
+                 timeout, worker_init_fn, prefetch_factor=3)
 
         self.name = name
         self.training = training
