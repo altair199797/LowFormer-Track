@@ -32,7 +32,8 @@ class LowFormerNeck(nn.Module):
         super().__init__()
         self.add_stage = add_stage
         feat_base = 20 if backbone_arch == "b15" else (32 if backbone_arch=="b3" else (16 if backbone_arch=="b1" else -1 ))
-            
+        
+        self.downit, self.downit2, self.combineit, self.combineit2 = nn.Identity(), nn.Identity(), nn.Identity(), nn.Identity()
         if add_stage:
             self.downit = nn.Sequential(nn.Conv2d(feat_base*4, feat_base*8,3, stride=2, padding=1))
             self.combineit = nn.Sequential(nn.Conv2d(feat_base*16, feat_base*8, 1, stride=1, padding=0))
@@ -62,6 +63,9 @@ class LowFormerNeck(nn.Module):
         merged_features = self.ff(highlow)
         
         return {4:merged_features}
+    
+    
+    
     
 class LowFormer_Track(nn.Module):
     """ This is the base class for MobileViTv2-Track """
@@ -109,12 +113,17 @@ class LowFormer_Track(nn.Module):
 
         # cut off template features
         if self.no_template_feats:
-            assert False
+            # assert False
             features = {key: value[:,:,:int((value.shape[2]/3)*2),:] for key, value in features.items() }
         
         ### Neck
-        features = self.neck(features)[4]
+        features = self.neck(features)
+        assert len(list(features.keys())) == 1, features.keys()
+        features = features[list(features.keys())[0]]
 
+        # Cut off features before head
+        features = features[:,:,:int((features.shape[2]/3)*2),:]
+        
         ### Forward head
         if self.model_return_template:
             out = self.forward_head(features)

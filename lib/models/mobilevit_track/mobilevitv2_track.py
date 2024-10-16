@@ -44,6 +44,7 @@ class MobileViTv2_Track(nn.Module):
             self.box_head = _get_clones(self.box_head, 6)
 
     def forward(self, template: torch.Tensor, search: torch.Tensor):
+        # print("sizes:",search.shape, template.shape)
         x, z = self.backbone(x=search, z=template)
 
         # Forward neck

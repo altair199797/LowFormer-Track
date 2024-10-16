@@ -829,7 +829,7 @@ class MLPCenterPredictor(nn.Module, ):
                 nn.init.xavier_uniform_(p)
 
     # x: [1, 480,16, 16]
-    def forward(self, x, gt_score_map=None):
+    def forward(self, x):
         """ Forward pass with input x. """
 
         x = x.flatten(2).permute(0, 2, 1)
@@ -838,15 +838,11 @@ class MLPCenterPredictor(nn.Module, ):
         # print("output:", score_map_ctr.shape) # output: torch.Size([1, 1, 16, 16])  
         # print("size/offset:",size_map.shape, offset_map.shape) # torch.Size([1, 2, 16, 16])    
 
-
-        if gt_score_map is None:
-            bbox, max_score = self.cal_bbox(score_map_ctr, size_map, offset_map, return_score=True)
-        else:
-            bbox, max_score = self.cal_bbox(gt_score_map.unsqueeze(1), size_map, offset_map, return_score=True)
-
+        bbox, max_score = self.cal_bbox(score_map_ctr, size_map, offset_map)
+        
         return score_map_ctr, bbox, size_map, offset_map, max_score, None
 
-    def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
+    def cal_bbox(self, score_map_ctr, size_map, offset_map):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
         idx_y = idx // self.feat_sz
         idx_x = idx % self.feat_sz
@@ -862,9 +858,8 @@ class MLPCenterPredictor(nn.Module, ):
                           (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
                           size.squeeze(-1)], dim=1)
 
-        if return_score:
-            return bbox, max_score
-        return bbox
+        return bbox, max_score
+
 
     def get_pred(self, score_map_ctr, size_map, offset_map):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
@@ -878,35 +873,37 @@ class MLPCenterPredictor(nn.Module, ):
         # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
         #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
         return size * self.feat_sz, offset
-
+    
+    def _sigmoid(self, x):
+        y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
+        return y
+    
     def get_score_map(self, x):
 
-        def _sigmoid(x):
-            y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
-            return y
 
+        N = x.shape[0]
         # print(x.shape)
         score_map_ctr = x # ctr branch
         for i, layer in enumerate(self.layers_ctr):
             # print(score_map_ctr.shape) ---> torch.Size([1, 256, 160])
             score_map_ctr = F.relu(layer(score_map_ctr)) if i < self.num_layers - 1 else layer(score_map_ctr)
         score_map_ctr = score_map_ctr.permute(0, 2, 1)
-        # print(score_map_ctr.shape,self.feat_sz)
-        score_map_ctr = score_map_ctr.view(*score_map_ctr.shape[:2], self.feat_sz, self.feat_sz)
+        score_map_ctr = score_map_ctr.view(N, 1, self.feat_sz, self.feat_sz)
 
         score_map_offset = x # offset branch
         for i, layer in enumerate(self.layers_offset):
             score_map_offset = F.relu(layer(score_map_offset)) if i < self.num_layers - 1 else layer(score_map_offset)
         score_map_offset = score_map_offset.permute(0, 2, 1)
-        score_map_offset = score_map_offset.view(*score_map_offset.shape[:2], self.feat_sz, self.feat_sz)
+        score_map_offset = score_map_offset.view(N,2, self.feat_sz, self.feat_sz)
 
         score_map_size = x # size branch
         for i, layer in enumerate(self.layers_size):
             score_map_size = F.relu(layer(score_map_size)) if i < self.num_layers - 1 else layer(score_map_size)
         score_map_size = score_map_size.permute(0, 2, 1)
-        score_map_size = score_map_size.view(*score_map_size.shape[:2], self.feat_sz, self.feat_sz)
+        score_map_size = score_map_size.view(N,2, self.feat_sz, self.feat_sz)
 
-        return _sigmoid(score_map_ctr), _sigmoid(score_map_size), score_map_offset
+        
+        return self._sigmoid(score_map_ctr), self._sigmoid(score_map_size), score_map_offset
 
 
 class MLP(nn.Module):

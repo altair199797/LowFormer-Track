@@ -267,8 +267,7 @@ class LinearAttnFFN(BaseModule):
         )
 
     def forward(
-        self, x: Tensor, x_prev: Optional[Tensor] = None, *args, **kwargs
-    ) -> Tensor:
+        self, x: Tensor, x_prev: Optional[Tensor] = None,  ) -> Tensor:
         if x_prev is None:
             # self-attention
             x = x + self.pre_norm_attn(x)

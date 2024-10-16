@@ -34,13 +34,14 @@ class MobileViTv2_Track_Block(MobileViTBlockv2):
                                  ffn_dropout, patch_h, patch_w, conv_ksize, dilation, attn_norm_layer, *args, **kwargs)
         self.mixed_attn = opts["mixed_attn"]
 
-    def forward_spatial(self, x: Tensor, z: Tensor) -> Tensor:
+    def forward_spatial(self, x: Tensor, z: Tensor) -> Tuple[Tensor,Tensor]:
 
         fm_x = self.local_rep(x)
         fm_z = self.local_rep(z)
 
         # convert feature map to patches
         if self.enable_coreml_compatible_fn:
+            assert False
             patches_x, output_size_x = self.unfolding_coreml(fm_x)
             patches_z, output_size_z = self.unfolding_coreml(fm_z)
         else:

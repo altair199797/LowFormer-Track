@@ -29,9 +29,9 @@ def setup_onnx_gpu(model_path, inp, out):
     session.run_with_iobinding(io_binding, ro)
     ort_outs = y_ortvalue.numpy()
 
-def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=False, optit=True, onnx_bool=False, args=None):
-    device = "cpu" if cpu else "cuda:0"
-    inp = torch.randn(batch_size, 3, image_sizes[0], image_sizes[1]).to(device)
+def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=False, optit=False, onnx_bool=False, args=None):
+    # device = "cpu" if cpu else "cuda:0"
+    inp = torch.randn(batch_size, 3, image_sizes[0], image_sizes[1]).cuda()
     
     # Transform Model
     if optit:
@@ -88,7 +88,7 @@ def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=
     else:
         with torch.inference_mode():
             model.eval()
-            model.to(device)
+            model.cuda()
             # warmup
             for i in range(5):
                 out = model(inp)
@@ -125,25 +125,50 @@ def init_model(args):
     return tracker 
 
 def short_test(tracker):
-    inp = torch.randn(2,3,384,256).cuda()
+    inp = torch.randn(1,3,384,256).cuda()
     out = tracker(inp)
     print({key:(value.shape if not value is None else None) for key,value in out.items()})
-    print(out["max_score"])
+    # print(out["max_score"])
 
+class TrackerWrapper(torch.nn.Module):
+    
+    def __init__(self, net, args):
+        super().__init__()
+        self.net = net
+
+        
+        z = self.net.backbone.conv_1.forward(torch.randn(1,3,128,128).cuda())
+
+        # layer_1 (i.e., MobileNetV2 block) output
+        z = self.net.backbone.layer_1.forward(z)
+
+        # layer_2 (i.e., MobileNetV2 with down-sampling + 2 x MobileNetV2) output
+        z = self.net.backbone.layer_2.forward(z)
+        self.z = z
+        
+    def forward(self, x):
+        search_ind = int((x.shape[2]/3)*2)
+        # templ = int(x.shape[2]/3)
+        return self.net(search=x[:,:,:search_ind,:], template=self.z)
 
 
 # lowformer_256_128x1_ep300_lasot_coco_b3_lffv3_convhead # 15
+# mobilevitv2_256_128x1_ep300_mine
 def main():
     parser = argparse.ArgumentParser(description='Run tracker on sequence or dataset.')
     # parser.add_argument('--tracker_name', type=str, default='mobilevitv2_track', help='Name of tracking method.')
     # parser.add_argument("--force_eval", action="store_true", default=False)
     # parser.add_argument('--ckpos', type=int, default=-1)
     parser.add_argument('--config', type=str, default='lowformer_256_128x1_ep300_lasot_coco_got_b15_lffv3_convhead', help='Name of tracking method.')
+    parser.add_argument('--gpu', type=int, default=0)
     
+    torch.cuda.set_device(args.gpu)
     
     args = parser.parse_args()
     
     tracker = init_model(args)
+    if not "lowformer" in args.config:
+        tracker = TrackerWrapper(tracker, args)
     short_test(tracker)
     
     testrun_it(tracker)

@@ -121,7 +121,6 @@ class MobileViTv2Track(BaseTracker):
 
         with torch.no_grad():
             x_dict = search
-            # merge the template and the search
             out_dict = self.network.forward(
                 template=self.z_dict1.to(self.device), search=x_dict.tensors.to(self.device))
 

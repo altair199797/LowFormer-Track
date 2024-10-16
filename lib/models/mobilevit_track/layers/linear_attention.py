@@ -131,16 +131,19 @@ class LinearSelfAttention(BaseLayer):
             print("Please install OpenCV to visualize context maps")
             return context_map
 
-    def _forward_self_attn(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def _forward_self_attn(self, x: Tensor) -> Tensor:
         # [B, C, P, N] --> [B, h + 2d, P, N]
         qkv = self.qkv_proj(x)
 
         # Project x into query, key and value
         # Query --> [B, 1, P, N]
         # value, key --> [B, d, P, N]
-        query, key, value = torch.split(
-            qkv, split_size_or_sections=[1, self.embed_dim, self.embed_dim], dim=1
-        )
+        # print(qkv.shape)
+        # query, key, value = torch.split(
+        #     qkv, split_size_or_sections=[1, self.embed_dim, self.embed_dim], dim=1
+        # )
+        query, key, value = qkv[:,:1,:,:], qkv[:,1:self.embed_dim+1,:,:], qkv[:,self.embed_dim+1:,:,:]
+        # print(query.shape, key.shape, value.shape)
 
         # apply softmax along N dimension
         context_scores = F.softmax(query, dim=-1)
@@ -167,8 +170,7 @@ class LinearSelfAttention(BaseLayer):
         return out
 
     def _forward_cross_attn(
-        self, x: Tensor, x_prev: Optional[Tensor] = None, *args, **kwargs
-    ) -> Tensor:
+        self, x: Tensor, x_prev: Optional[Tensor] = None ) -> Tensor:
         # x --> [B, C, P, N]
         # x_prev = [B, C, P, M]
 
@@ -213,12 +215,12 @@ class LinearSelfAttention(BaseLayer):
         return out
 
     def forward(
-        self, x: Tensor, x_prev: Optional[Tensor] = None, *args, **kwargs
-    ) -> Tensor:
+        self, x: Tensor, x_prev: Optional[Tensor] = None ) -> Tensor:
         if x_prev is None:
-            return self._forward_self_attn(x, *args, **kwargs)
+            return self._forward_self_attn(x)
         else:
-            return self._forward_cross_attn(x, x_prev=x_prev, *args, **kwargs)
+            assert False
+            return self._forward_cross_attn(x, x_prev=x_prev)
 
     def profile_module(self, input) -> Tuple[Tensor, float, float]:
         params = macs = 0.0
