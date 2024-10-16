@@ -48,8 +48,11 @@ class MSCOCOSeq(BaseVideoDataset):
 
         # /coco/train2017
         self.img_pth = os.path.join(root, '{}{}/'.format(split, version))
+        if not os.path.exists(self.img_pth):
+            self.img_pth = os.path.join(root,"images", '{}{}/'.format(split, version))
         self.anno_path = os.path.join(root, 'annotations_trainval2017/instances_{}{}.json'.format(split, version))
-
+        if not os.path.exists(self.anno_path):
+            self.anno_path = os.path.join(root, 'annotations/instances_{}{}.json'.format(split, version))
         # Load the COCO set.
         self.coco_set = COCO(self.anno_path)
 

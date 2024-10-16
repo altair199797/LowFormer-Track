@@ -39,6 +39,10 @@ def parse_args():
 
 # python tracking/train.py --script mobilevitv2_track --config mobilevitv2_256_128x1_ep300_coco --save_dir ./output --mode single
 # python tracking/train.py --script lowformer_track --config lowformer_256_128x1_ep300_lasot_b15 --save_dir ./output --mode single
+
+### MULTIPLE
+# CUDA_VISIBLE_DEVICES=1,2,3,4,5 python tracking/train.py --script lowformer_track --config lowformer_256_128x1_ep300_all_b15_lff --save_dir ./output --mode multiple --nproc_per_node 5
+
 def main():
     args = parse_args()
     if args.mode == "single":
