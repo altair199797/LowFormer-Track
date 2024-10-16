@@ -67,6 +67,12 @@ class Tracker:
         tracker = self.tracker_class(params, self.dataset_name, test=self.testit, args=self.args)
         return tracker
 
+    def get_tracker(self):
+        params = self.get_parameters()
+        params.debug = getattr(params, 'debug', 0)
+        tracker = self.create_tracker(params)
+        return tracker
+
     def run_sequence(self, seq, debug=None):
         """Run tracker on sequence.
         args:

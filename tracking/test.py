@@ -65,5 +65,7 @@ def main():
 
 # python tracking/test.py --tracker_name lowformer_track --tracker_param lowformer_256_128x1_ep300_lasot_b15 --dataset LaSOT --force_eval --threads 5
 
+#  python tracking/test.py --tracker_name lowformer_track --tracker_param lowformer_256_128x1_ep300_lasot_coco_got_b15_lffv3_convhead --dataset LaSOT --force_eval --threads 1
+
 if __name__ == '__main__':
     main()

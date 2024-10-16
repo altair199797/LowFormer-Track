@@ -476,17 +476,15 @@ class LowFormerBackbone(nn.Module):
                         new_smbconv=new_smbconv,
                     )
         return block
-    def remove_stages(self, n):
-        if n == 0:
-            return
-        self.stages = self.stages[:-n]
-        self.max_stage_id = 4 - n
 
     def return_stages(self, n):
         assert n>0, n    
         self.ret_stages = n
+
+    def cut_stages(self):
+        self.stages = self.stages[:self.max_stage_id]
     
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> Dict[int, torch.Tensor]:
         # if x.shape[0] > 5:
         #     if not os.path.exists("dump_data"):
         #         os.makedirs("dump_data")
@@ -517,10 +515,24 @@ class LowFormerBackbone(nn.Module):
             if self.ret_stages == 1:
                 x = self.input_stem(x)
                 for stage_id, stage in enumerate(self.stages, start=1):
-                    if stage_id > self.max_stage_id:
-                        break
                     x = stage(x)
-                return x
+                    
+                return {4:x}
+            elif True:
+                x = self.input_stem(x)
+                out_dict = {}
+                outputs = [x]
+                for stage_id, stage in enumerate(self.stages, start=1):
+                    x = stage(x)
+                    outputs.append(x)
+                    
+                    # if stage_id >= len(self.stages) - (self.ret_stages-1):
+                    #     out_dict[int(stage_id)] = x
+                
+                ret_dict =  {(ind+len(self.stages) - (self.ret_stages - 1)):i for ind, i in enumerate(outputs[len(self.stages) - (self.ret_stages - 1):]) }
+                # print(self.ret_stages, len(self.stages))
+                # print({key:(value.shape if not value is None else None) for key,value in ret_dict.items()})
+                return ret_dict
             else:
                 x = self.input_stem(x)
                 out_dict = {}

@@ -106,11 +106,14 @@ def get_lowformer(config_path="Wymodelgetter/configs/b3.yaml", checkpoint_path="
         model.max_stage_id = 3
     else:
         if cfg.MODEL.LOW_FEAT_FUSE:
-            model.return_stages(n=2)
+            model.return_stages(n=2 + (1 if cfg.MODEL.LOW_FEAT_FUSEV2 else 0) + (1 if cfg.MODEL.LOW_FEAT_FUSEV3 else 0))
         elif cfg.MODEL.BB_STAGE_LAST:
             pass
         else:
-            model.remove_stages(n=1)
+            model.max_stage_id = 3
+            model.stages = model.stages[:-1]
+    model.cut_stages()
+            
     # print(model)
     inp = torch.randn(1,3,224,224)
     out = model(inp)

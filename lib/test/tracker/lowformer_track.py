@@ -29,19 +29,22 @@ class MobileViTv2Track(BaseTracker):
         
         self.args = args
         if test:
-            if args.ckpos == -10:
+            if args is None or args.ckpos == -10:
                 pass
-            else:
-                ckpath = self.params.checkpoint.split("/")[:-1]
-                ckpath = "/".join(ckpath)
-                cks = os.listdir(ckpath)
-                ck_chosen = sorted(cks,key= lambda x: int(x.split("ep")[-1].replace(".pth.tar","")))#[1]#[-1]
-                ck_chosen = ck_chosen[args.ckpos]
-                ckpath = os.path.join(ckpath,ck_chosen)
-                    
-                network.load_state_dict(torch.load(ckpath, map_location='cpu')['net'], strict=True)
-                print("loaded checkpoint at:", ckpath)
-                print("EPOCH:",int(ck_chosen.split("ep")[-1].replace(".pth.tar","")))
+            elif not args is None:
+                try:
+                    ckpath = self.params.checkpoint.split("/")[:-1]
+                    ckpath = "/".join(ckpath)
+                    cks = os.listdir(ckpath)
+                    ck_chosen = sorted(cks,key= lambda x: int(x.split("ep")[-1].replace(".pth.tar","")))#[1]#[-1]
+                    ck_chosen = ck_chosen[args.ckpos]
+                    ckpath = os.path.join(ckpath,ck_chosen)
+                        
+                    network.load_state_dict(torch.load(ckpath, map_location='cpu')['net'], strict=True)
+                    print("loaded checkpoint at:", ckpath)
+                    print("EPOCH:",int(ck_chosen.split("ep")[-1].replace(".pth.tar","")))
+                except:
+                    print("CHECKPOINT COULD NOT BE LOADED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         else:
             network.load_state_dict(torch.load(self.params.checkpoint, map_location='cpu')['net'], strict=True)
         
@@ -119,20 +122,25 @@ class MobileViTv2Track(BaseTracker):
             out_dict = self.network(merged_image)
 
         
-        ### Postprocess Model Output
-        pred_score_map = out_dict['score_map']
+        if self.cfg.MODEL.NO_POSTPROCESS or out_dict['score_map'] is None:
+            # print(out_dict["pred_boxes"])
+            self.state =  clip_box(out_dict["pred_boxes"].squeeze(0).squeeze(0).tolist(), H, W, margin=10)
+        else:
+                
+            ### Postprocess Model Output
+            pred_score_map = out_dict['score_map']
 
-        # add hann windows
-        response = self.output_window * pred_score_map
-        # response = pred_score_map
-        pred_boxes = self.network.box_head.cal_bbox(response, out_dict['size_map'], out_dict['offset_map'])
-        pred_boxes = pred_boxes.view(-1, 4)
-        # Baseline: Take the mean of all pred boxes as the final result
-        pred_box = (pred_boxes.mean(dim=0) * self.params.search_size / resize_factor).tolist()  # (cx, cy, w, h) [0,1]
-        best_bbox = self.map_box_back(pred_box, resize_factor)
+            # add hann windows
+            response = self.output_window * pred_score_map
+            # response = pred_score_map
+            pred_boxes, _ = self.network.box_head.cal_bbox(response, out_dict['size_map'], out_dict['offset_map'])
+            pred_boxes = pred_boxes.view(-1, 4)
+            # Baseline: Take the mean of all pred boxes as the final result
+            pred_box = (pred_boxes.mean(dim=0) * self.params.search_size / resize_factor).tolist()  # (cx, cy, w, h) [0,1]
+            best_bbox = self.map_box_back(pred_box, resize_factor)
 
-        # get the final box result
-        self.state = clip_box(best_bbox, H, W, margin=10)
+            # get the final box result
+            self.state = clip_box(best_bbox, H, W, margin=10)
 
 
 
