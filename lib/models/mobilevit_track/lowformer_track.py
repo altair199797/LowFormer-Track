@@ -23,7 +23,7 @@ from Wymodelgetter.ops import LowFormerBlock
 
 class LowFormerNeck(nn.Module):
 
-    def __init__(self, lowformit=False, add_stage=0, backbone_arch="b15"):
+    def __init__(self, lowformit=False, add_stage=0,  backbone_arch="b15"):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the transformer architecture.
@@ -63,7 +63,62 @@ class LowFormerNeck(nn.Module):
         merged_features = self.ff(highlow)
         
         return {4:merged_features}
+
+
+class LowFormerNeckV2(nn.Module):
+
+    def __init__(self, lowformit=False, add_stage=0, backbone_arch="b15", backbone=None):
+        """ Initializes the model.
+        Parameters:
+            backbone: torch module of the transformer architecture.
+            aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.
+        """
+        super().__init__()
+        self.add_stage = add_stage
+        feat_base = 20 if backbone_arch == "b15" else (32 if backbone_arch=="b3" else (16 if backbone_arch=="b1" else -1 ))
+        assert add_stage == 2, add_stage
+                
+        self.downit, self.downit2, self.combineit, self.combineit2 = nn.Identity(), nn.Identity(), nn.Identity(), nn.Identity()
+        
+        
+        self.downit1 = nn.Sequential(nn.Conv2d(feat_base*2, feat_base*4,3, stride=2, padding=1))
+        self.downit2 = nn.Sequential(nn.Conv2d(feat_base*8, feat_base*16,3, stride=2, padding=1))
+        # self.downit3 = nn.Sequential(nn.Conv2d(feat_base*4, feat_base*8,3, stride=2, padding=1))
+        
+        self.combineit = nn.Sequential(nn.Conv2d(feat_base*24, feat_base*16, 1, stride=1, padding=0))
+        self.combineit2 = nn.Sequential(nn.Conv2d(feat_base*8, feat_base*8, 1, stride=1, padding=0))
+        self.combineit3 = nn.Sequential(nn.Conv2d(feat_base*32, feat_base*16, 1, stride=1, padding=0))
+        
+                
     
+        self.upsample = nn.Upsample(scale_factor=2, mode="nearest")  
+        if lowformit:
+            self.ff = LowFormerBlock(in_channels=feat_base*16,fuseconv=True, bb_convattention=True, bb_convin2=True, head_dim_mul=True)
+            # print(backbone)
+            # for layer in backbone.stages[-1].modules():
+            #     print(layer,"\n\n--------------------\n\n")
+
+    # -> [N,320,16,16]
+    def forward(self, features: Dict[int, torch.Tensor]): 
+        # print([(key, value.shape) for key, value in features.items()])
+        # stage1: 40,96,64 |  stage2: 80,48,32 | stage3: 160,24,16 | stage4: 320,12,8
+        features[4] = self.upsample(features[4]) # -> [N,320,16,16]
+        features[3] = features[3]  # [N,160,16,16]
+        lower_ff = self.combineit(torch.cat([features[3], features[4]],dim=1)) # -> [N,320,16,16]
+        
+        features[1] = self.downit1(features[1]) # ->[N,80,32,32]
+        upper_ff = self.combineit2(torch.cat([features[1], features[2]], dim=1)) # -> [N,160,32,32]
+        upper_ff = self.downit2(upper_ff) # -> [N,320,16,16]
+        
+        highlow = self.combineit3(torch.cat([lower_ff, upper_ff],dim=1)) 
+        
+        # features[2] = self.downit(features[2]) # [N,160,16,16]
+        # features[1] = self.downit3(features[1]) # ->[N,160,16,16]
+        # highlow = self.combineit(torch.cat([features[1],features[2],features[3],features[4]], dim=1))
+        
+        merged_features = self.ff(highlow)
+        
+        return {4:merged_features}
     
     
     
@@ -84,7 +139,10 @@ class LowFormer_Track(nn.Module):
         
         self.neck = nn.Identity()        
         if feat_fusion:
-            self.neck = LowFormerNeck(lowformit=True, add_stage=int(cfg.MODEL.LOW_FEAT_FUSEV2) + int(cfg.MODEL.LOW_FEAT_FUSEV3), backbone_arch=cfg.MODEL.BACKBONE.TYPE)
+            if cfg.MODEL.LOW_FEAT_FUSEV4:
+                self.neck = LowFormerNeckV2(lowformit=True, add_stage=int(cfg.MODEL.LOW_FEAT_FUSEV2) + int(cfg.MODEL.LOW_FEAT_FUSEV3),backbone_arch=cfg.MODEL.BACKBONE.TYPE, backbone=backbone)
+            else:
+                self.neck = LowFormerNeck(lowformit=True, add_stage=int(cfg.MODEL.LOW_FEAT_FUSEV2) + int(cfg.MODEL.LOW_FEAT_FUSEV3),backbone_arch=cfg.MODEL.BACKBONE.TYPE)
         
         self.box_head = box_head
 

@@ -162,9 +162,10 @@ def main():
     parser.add_argument('--config', type=str, default='lowformer_256_128x1_ep300_lasot_coco_got_b15_lffv3_convhead', help='Name of tracking method.')
     parser.add_argument('--gpu', type=int, default=0)
     
-    torch.cuda.set_device(args.gpu)
     
     args = parser.parse_args()
+    torch.cuda.set_device(args.gpu)
+    
     
     tracker = init_model(args)
     if not "lowformer" in args.config:
