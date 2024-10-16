@@ -125,7 +125,7 @@ class LowFormerNeckV2(nn.Module):
 class LowFormer_Track(nn.Module):
     """ This is the base class for MobileViTv2-Track """
 
-    def __init__(self, backbone, box_head, aux_loss=False, head_type="CORNER", feat_fusion=False, cfg=None):
+    def __init__(self, backbone, box_head, aux_loss=False, head_type="CORNER", feat_fusion=False, cfg=None, additional_layer=False):
         """ Initializes the model.
         Parameters:
             backbone: torch module of the transformer architecture.
@@ -134,7 +134,8 @@ class LowFormer_Track(nn.Module):
         super().__init__()
         self.cfg = cfg 
         self.feat_fusion = feat_fusion
-
+        self.additional_layer = additional_layer
+    
         self.backbone = backbone
         
         self.neck = nn.Identity()        
@@ -160,14 +161,46 @@ class LowFormer_Track(nn.Module):
         self.no_grad_backbone = self.cfg.TRAIN.NO_GRAD_BACKBONE
         self.no_template_feats = self.cfg.MODEL.NO_TEMPLATE_FEATS
         self.model_return_template =  self.cfg.MODEL.RETURN_TEMPLATE
+        
+        if self.additional_layer:
+            self.add_layers = nn.ModuleList([LowFormerBlock(in_channels=chs,fuseconv=True, bb_convattention=True, bb_convin2=True, head_dim_mul=True) for chs in [80,160,320]])
 
+    def execute_backbone(self, merged_image: torch.Tensor):
+        if self.additional_layer:
+            features = {}
+            merged_image = self.backbone.input_stem(merged_image)
+            merged_image = self.backbone.stages[0](merged_image)
+            features[1] = merged_image.clone()
+            # print(merged_image.shape)
+            
+            merged_image = self.backbone.stages[1](merged_image)
+            merged_image = self.add_layers[0](merged_image)
+            features[2] = merged_image.clone()
+            # print(merged_image.shape)
+            
+            merged_image = self.backbone.stages[2](merged_image)
+            merged_image = self.add_layers[1](merged_image)
+            features[3] = merged_image.clone()
+            # print(merged_image.shape)
+            
+            merged_image = self.backbone.stages[3](merged_image)
+            merged_image = self.add_layers[2](merged_image)
+            features[4] = merged_image.clone()
+            # print(merged_image.shape)
+            
+        else:
+            features = self.backbone(merged_image) # torch.Size([128, 128, 24, 16])
+
+        return features
+        
     def forward(self, merged_image: torch.Tensor):
         ### Backbone
         if self.no_grad_backbone:#self.cfg.TRAIN.NO_GRAD_BACKBONE:
             with torch.no_grad():
-                features = self.backbone(merged_image) # torch.Size([128, 128, 24, 16])
+                features = self.execute_backbone(merged_image) # torch.Size([128, 128, 24, 16])
         else:
-            features = self.backbone(merged_image) # torch.Size([128, 128, 24, 16])
+            features = self.execute_backbone(merged_image)
+
 
         # cut off template features
         if self.no_template_feats:
@@ -264,7 +297,7 @@ def build_lowformer_track(cfg, settings=None, training=True):
 
     box_head = build_box_head(cfg, cfg.MODEL.HEAD.NUM_CHANNELS)
 
-    model = LowFormer_Track(backbone=backbone, box_head=box_head, aux_loss=False, head_type=cfg.MODEL.HEAD.TYPE, feat_fusion=cfg.MODEL.LOW_FEAT_FUSE, cfg=cfg)
+    model = LowFormer_Track(backbone=backbone, box_head=box_head, aux_loss=False, head_type=cfg.MODEL.HEAD.TYPE, feat_fusion=cfg.MODEL.LOW_FEAT_FUSE, cfg=cfg, additional_layer=cfg.MODEL.ADD_BACKBONE_LAYER)
 
     from tracking.myutils import to_file
     to_file(str(model),"modelprint.txt")
