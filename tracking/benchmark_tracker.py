@@ -190,6 +190,8 @@ def main():
     
     args = parser.parse_args()
     
+    
+    args = parser.parse_args()
     torch.cuda.set_device(args.gpu)
     
     
