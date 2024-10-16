@@ -6,6 +6,9 @@ import onnxruntime as ort
 prj_path = os.path.join(os.path.dirname(__file__), '..')
 if prj_path not in sys.path:
     sys.path.append(prj_path)
+    
+# from lib.models.mobilevit_track.lowformer_track import show_params_flops
+
 from lib.test.evaluation.tracker import Tracker
 
 def setup_onnx_gpu(model_path, inp, out):
@@ -29,16 +32,16 @@ def setup_onnx_gpu(model_path, inp, out):
     session.run_with_iobinding(io_binding, ro)
     ort_outs = y_ortvalue.numpy()
 
-def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=False, optit=False, onnx_bool=False, args=None):
+def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=False,  args=None):
     # device = "cpu" if cpu else "cuda:0"
     inp = torch.randn(batch_size, 3, image_sizes[0], image_sizes[1]).cuda()
     
     # Transform Model
-    if optit:
+    if args.optit:
         model.eval()
         model = torch.jit.script(model)#, example_inputs=[inp])    
         model = torch.jit.optimize_for_inference(model)
-    if onnx_bool:
+    if args.onnx:
         model_path = os.path.join("tracking","onnx_models","temp"+".onnx")
         out_dict = {'pred_boxes': torch.Size([2, 1, 4]), 'score_map': torch.Size([2, 1, 16, 16]), 'size_map': torch.Size([2, 2, 16, 16]), 'offset_map': torch.Size([2, 2, 16, 16]), 'max_score': torch.Size([2, 1])}#, 'grid_map': None}
             
@@ -59,7 +62,7 @@ def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=
     
     ## Run
     timings = []
-    if onnx_bool:
+    if args.onnx:
         inp = inp.cpu().numpy().astype(np.float32)
         if cpu:
             ort_session = ort.InferenceSession(model_path)
@@ -132,10 +135,10 @@ def short_test(tracker):
 
 class TrackerWrapper(torch.nn.Module):
     
-    def __init__(self, net, args):
+    def __init__(self, net, args, nobb=False):
         super().__init__()
         self.net = net
-
+        self.nobb = nobb
         
         z = self.net.backbone.conv_1.forward(torch.randn(1,3,128,128).cuda())
 
@@ -146,11 +149,30 @@ class TrackerWrapper(torch.nn.Module):
         z = self.net.backbone.layer_2.forward(z)
         self.z = z
         
+        if self.nobb:
+            x = torch.randn(1,3,256,256).cuda()
+            self.x, self.z = self.net.backbone(x=x, z=self.z)
+        
     def forward(self, x):
         search_ind = int((x.shape[2]/3)*2)
         # templ = int(x.shape[2]/3)
+        if self.nobb:
+            x,z = self.net.neck(self.x, self.z)
+            feat_fused = self.net.feature_fusor(z,x)
+            out = self.net.forward_head(feat_fused, None)
+            return out
+            
         return self.net(search=x[:,:,:search_ind,:], template=self.z)
 
+
+def show_params_flops(model, tmpsize, searsize):
+    from ptflops import get_model_complexity_info
+    with torch.cuda.device(0):
+        inp_size = (3, tmpsize+searsize, searsize)
+        print("Testing for total size of ",inp_size)
+        macs, params = get_model_complexity_info(model, inp_size, as_strings=False,
+                                    print_per_layer_stat=False, verbose=False)
+        print("MMACS: %d  |  PARAMETERS (M): %.2f" % (macs/1_000_000, params/1_000_000))
 
 # lowformer_256_128x1_ep300_lasot_coco_b3_lffv3_convhead # 15
 # mobilevitv2_256_128x1_ep300_mine
@@ -161,17 +183,24 @@ def main():
     # parser.add_argument('--ckpos', type=int, default=-1)
     parser.add_argument('--config', type=str, default='lowformer_256_128x1_ep300_lasot_coco_got_b15_lffv3_convhead', help='Name of tracking method.')
     parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument("--optit", action="store_true", default=False)
+    parser.add_argument("--onnx", action="store_true", default=False)
+    
+    
+    
+    args = parser.parse_args()
     
     torch.cuda.set_device(args.gpu)
     
-    args = parser.parse_args()
     
     tracker = init_model(args)
     if not "lowformer" in args.config:
         tracker = TrackerWrapper(tracker, args)
     short_test(tracker)
+    show_params_flops(tracker, 128, 256)
     
-    testrun_it(tracker)
+    with torch.no_grad():
+        testrun_it(tracker, args=args)
     
     
 
