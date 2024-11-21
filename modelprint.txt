@@ -662,51 +662,43 @@ LowFormer_Track(
       )
     )
   )
-  (neck): LowFormerNeckV2(
-    (downit): Identity()
-    (downit2): Sequential(
-      (0): Conv2d(160, 320, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+  (neck): LowFormerNeck(
+    (downit): Sequential(
+      (0): Conv2d(80, 160, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
     )
+    (downit2): Identity()
     (combineit): Sequential(
-      (0): Conv2d(480, 320, kernel_size=(1, 1), stride=(1, 1))
+      (0): Conv2d(320, 160, kernel_size=(1, 1), stride=(1, 1))
     )
-    (combineit2): Sequential(
-      (0): Conv2d(160, 160, kernel_size=(1, 1), stride=(1, 1))
-    )
-    (downit1): Sequential(
-      (0): Conv2d(40, 80, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
-    )
-    (combineit3): Sequential(
-      (0): Conv2d(640, 320, kernel_size=(1, 1), stride=(1, 1))
-    )
+    (combineit2): Identity()
     (upsample): Upsample(scale_factor=2.0, mode=nearest)
     (ff): LowFormerBlock(
       (total): Sequential(
         (0): Sequential(
           (0): ResidualBlock(
             (main): Sequential(
-              (0): GroupNorm(1, 320, eps=1e-05, affine=True)
+              (0): GroupNorm(1, 480, eps=1e-05, affine=True)
               (1): ConvAttention(
                 (conv_proj): Sequential(
-                  (0): Conv2d(320, 320, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), groups=320, bias=False)
-                  (1): BatchNorm2d(320, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+                  (0): Conv2d(480, 480, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), groups=480, bias=False)
+                  (1): BatchNorm2d(480, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
                 )
                 (pwise): Sequential(
-                  (0): Conv2d(320, 480, kernel_size=(1, 1), stride=(1, 1), bias=False)
+                  (0): Conv2d(480, 720, kernel_size=(1, 1), stride=(1, 1), bias=False)
                 )
                 (sda): SDALayer()
                 (o_proj): Identity()
-                (upsampling): ConvTranspose2d(160, 320, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
+                (upsampling): ConvTranspose2d(240, 480, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
               )
             )
             (shortcut): IdentityLayer()
           )
           (1): ResidualBlock(
             (main): Sequential(
-              (0): GroupNorm(1, 320, eps=1e-05, affine=True)
-              (1): Conv2d(320, 1280, kernel_size=(1, 1), stride=(1, 1))
+              (0): GroupNorm(1, 480, eps=1e-05, affine=True)
+              (1): Conv2d(480, 1920, kernel_size=(1, 1), stride=(1, 1))
               (2): GELU(approximate=none)
-              (3): Conv2d(1280, 320, kernel_size=(1, 1), stride=(1, 1))
+              (3): Conv2d(1920, 480, kernel_size=(1, 1), stride=(1, 1))
             )
             (shortcut): IdentityLayer()
           )
@@ -714,16 +706,16 @@ LowFormer_Track(
         (1): ResidualBlock(
           (main): MBConv(
             (inverted_conv): ConvLayer(
-              (conv): Conv2d(320, 1280, kernel_size=(1, 1), stride=(1, 1))
+              (conv): Conv2d(480, 1920, kernel_size=(1, 1), stride=(1, 1))
               (act): Hardswish()
             )
             (depth_conv): ConvLayer(
-              (conv): Conv2d(1280, 1280, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1280)
+              (conv): Conv2d(1920, 1920, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1920)
               (act): Hardswish()
             )
             (point_conv): ConvLayer(
-              (conv): Conv2d(1280, 320, kernel_size=(1, 1), stride=(1, 1), bias=False)
-              (norm): BatchNorm2d(320, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+              (conv): Conv2d(1920, 480, kernel_size=(1, 1), stride=(1, 1), bias=False)
+              (norm): BatchNorm2d(480, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
             )
           )
           (shortcut): IdentityLayer()
@@ -733,7 +725,7 @@ LowFormer_Track(
   )
   (box_head): CenterPredictor(
     (conv1_ctr): Sequential(
-      (0): Conv2d(320, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (0): Conv2d(480, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
       (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
       (2): ReLU(inplace=True)
     )
@@ -754,7 +746,7 @@ LowFormer_Track(
     )
     (conv5_ctr): Conv2d(32, 1, kernel_size=(1, 1), stride=(1, 1))
     (conv1_offset): Sequential(
-      (0): Conv2d(320, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (0): Conv2d(480, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
       (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
       (2): ReLU(inplace=True)
     )
@@ -775,7 +767,7 @@ LowFormer_Track(
     )
     (conv5_offset): Conv2d(32, 2, kernel_size=(1, 1), stride=(1, 1))
     (conv1_size): Sequential(
-      (0): Conv2d(320, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (0): Conv2d(480, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
       (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
       (2): ReLU(inplace=True)
     )
@@ -795,151 +787,5 @@ LowFormer_Track(
       (2): ReLU(inplace=True)
     )
     (conv5_size): Conv2d(32, 2, kernel_size=(1, 1), stride=(1, 1))
-  )
-  (add_layers): ModuleList(
-    (0): LowFormerBlock(
-      (total): Sequential(
-        (0): Sequential(
-          (0): ResidualBlock(
-            (main): Sequential(
-              (0): GroupNorm(1, 80, eps=1e-05, affine=True)
-              (1): ConvAttention(
-                (conv_proj): Sequential(
-                  (0): Conv2d(80, 80, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), groups=80, bias=False)
-                  (1): BatchNorm2d(80, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-                )
-                (pwise): Sequential(
-                  (0): Conv2d(80, 240, kernel_size=(1, 1), stride=(1, 1), bias=False)
-                )
-                (sda): SDALayer()
-                (o_proj): Identity()
-                (upsampling): ConvTranspose2d(80, 80, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
-              )
-            )
-            (shortcut): IdentityLayer()
-          )
-          (1): ResidualBlock(
-            (main): Sequential(
-              (0): GroupNorm(1, 80, eps=1e-05, affine=True)
-              (1): Conv2d(80, 320, kernel_size=(1, 1), stride=(1, 1))
-              (2): GELU(approximate=none)
-              (3): Conv2d(320, 80, kernel_size=(1, 1), stride=(1, 1))
-            )
-            (shortcut): IdentityLayer()
-          )
-        )
-        (1): ResidualBlock(
-          (main): FusedMBConv(
-            (spatial_conv): ConvLayer(
-              (conv): Conv2d(80, 320, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-              (norm): BatchNorm2d(320, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-              (act): Hardswish()
-            )
-            (point_conv): ConvLayer(
-              (conv): Conv2d(320, 80, kernel_size=(1, 1), stride=(1, 1), bias=False)
-              (norm): BatchNorm2d(80, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-            )
-          )
-          (shortcut): IdentityLayer()
-        )
-      )
-    )
-    (1): LowFormerBlock(
-      (total): Sequential(
-        (0): Sequential(
-          (0): ResidualBlock(
-            (main): Sequential(
-              (0): GroupNorm(1, 160, eps=1e-05, affine=True)
-              (1): ConvAttention(
-                (conv_proj): Sequential(
-                  (0): Conv2d(160, 160, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), groups=160, bias=False)
-                  (1): BatchNorm2d(160, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-                )
-                (pwise): Sequential(
-                  (0): Conv2d(160, 240, kernel_size=(1, 1), stride=(1, 1), bias=False)
-                )
-                (sda): SDALayer()
-                (o_proj): Identity()
-                (upsampling): ConvTranspose2d(80, 160, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
-              )
-            )
-            (shortcut): IdentityLayer()
-          )
-          (1): ResidualBlock(
-            (main): Sequential(
-              (0): GroupNorm(1, 160, eps=1e-05, affine=True)
-              (1): Conv2d(160, 640, kernel_size=(1, 1), stride=(1, 1))
-              (2): GELU(approximate=none)
-              (3): Conv2d(640, 160, kernel_size=(1, 1), stride=(1, 1))
-            )
-            (shortcut): IdentityLayer()
-          )
-        )
-        (1): ResidualBlock(
-          (main): FusedMBConv(
-            (spatial_conv): ConvLayer(
-              (conv): Conv2d(160, 640, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-              (norm): BatchNorm2d(640, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-              (act): Hardswish()
-            )
-            (point_conv): ConvLayer(
-              (conv): Conv2d(640, 160, kernel_size=(1, 1), stride=(1, 1), bias=False)
-              (norm): BatchNorm2d(160, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-            )
-          )
-          (shortcut): IdentityLayer()
-        )
-      )
-    )
-    (2): LowFormerBlock(
-      (total): Sequential(
-        (0): Sequential(
-          (0): ResidualBlock(
-            (main): Sequential(
-              (0): GroupNorm(1, 320, eps=1e-05, affine=True)
-              (1): ConvAttention(
-                (conv_proj): Sequential(
-                  (0): Conv2d(320, 320, kernel_size=(5, 5), stride=(2, 2), padding=(2, 2), groups=320, bias=False)
-                  (1): BatchNorm2d(320, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-                )
-                (pwise): Sequential(
-                  (0): Conv2d(320, 480, kernel_size=(1, 1), stride=(1, 1), bias=False)
-                )
-                (sda): SDALayer()
-                (o_proj): Identity()
-                (upsampling): ConvTranspose2d(160, 320, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1))
-              )
-            )
-            (shortcut): IdentityLayer()
-          )
-          (1): ResidualBlock(
-            (main): Sequential(
-              (0): GroupNorm(1, 320, eps=1e-05, affine=True)
-              (1): Conv2d(320, 1280, kernel_size=(1, 1), stride=(1, 1))
-              (2): GELU(approximate=none)
-              (3): Conv2d(1280, 320, kernel_size=(1, 1), stride=(1, 1))
-            )
-            (shortcut): IdentityLayer()
-          )
-        )
-        (1): ResidualBlock(
-          (main): MBConv(
-            (inverted_conv): ConvLayer(
-              (conv): Conv2d(320, 1280, kernel_size=(1, 1), stride=(1, 1))
-              (act): Hardswish()
-            )
-            (depth_conv): ConvLayer(
-              (conv): Conv2d(1280, 1280, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), groups=1280)
-              (act): Hardswish()
-            )
-            (point_conv): ConvLayer(
-              (conv): Conv2d(1280, 320, kernel_size=(1, 1), stride=(1, 1), bias=False)
-              (norm): BatchNorm2d(320, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-            )
-          )
-          (shortcut): IdentityLayer()
-        )
-      )
-    )
   )
 )

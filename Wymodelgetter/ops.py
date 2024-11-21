@@ -225,6 +225,7 @@ if True:
             act_func=("relu6", None),
             fusedgroup=False,
             padding=-1,
+            nopw=False,
         ):
             super().__init__()
             # norm = ("bn2d","bn2d") # TODO REMOVE
@@ -249,11 +250,11 @@ if True:
             self.point_conv = ConvLayer(
                 mid_channels,
                 out_channels,
-                1,
+                1 if not nopw else 3,
                 use_bias=use_bias[1],
                 norm=norm[1],
                 act_func=act_func[1],
-                padding=padding,
+                padding=padding if not nopw else 1,
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -513,71 +514,6 @@ class MBConv(nn.Module):
     
 
 
-class SMConvLayer(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size=3,
-        stride=1,
-        dilation=1,
-        use_bias=False,
-        norm="bn2d",
-        act_func="relu",
-        smconv_dw=False,
-        bb_nosm=False,
-    ):
-        super(SMConvLayer, self).__init__()
-
-        padding = get_same_padding(kernel_size)
-        padding *= dilation
-        self.smconv_dw = smconv_dw
-
-
-        if self.smconv_dw:
-            stage = []
-            # pw
-            stage.append(ConvLayer(in_channels=in_channels, out_channels=in_channels, kernel_size=1,norm=norm, act_func=act_func))
-            if not bb_nosm:
-                stage.append(nn.Softmax(dim=1))
-            stage = nn.Sequential(*stage)
-            pwin = ResidualConcatLayer(main=stage,shortcut=IdentityLayer(),dim=1)
-            dwconv = ConvLayer(in_channels*2,in_channels*2,kernel_size=3,stride=stride,groups=in_channels*2,norm=norm,act_func=act_func)
-            pwconv = ConvLayer(in_channels*2,out_channels,kernel_size=1,norm=norm,act_func=act_func)
-            self.total = nn.Sequential(pwin, dwconv, pwconv)
-        else:
-            self.conv = nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size=(kernel_size, kernel_size),
-                stride=1,
-                padding=padding,
-                dilation=(dilation, dilation),
-                groups=in_channels,
-                bias=use_bias,
-            )
-            norm = build_norm(norm, num_features=out_channels)
-            act = build_act(act_func)
-
-            self.conv = nn.Sequential(self.conv, norm, act)
-            if bb_nosm:
-                self.sm = nn.Identity()
-            else:
-                self.sm = nn.Softmax(dim=1)
-            self.convpw = nn.Conv2d(out_channels*2,out_channels, kernel_size=1, stride=1, padding=0,bias=use_bias)
-            if False:
-                self.convpw = nn.Sequential(self.convpw, build_norm(norm, num_features=out_channels))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.smconv_dw:
-            x = self.total(x)
-        else:
-            x1 = self.conv(x)
-            x1 = self.sm(x1)
-            # x = x1
-            x = self.convpw(torch.cat([x,x1],dim=1))
-        return x
-
 
 class LiteMLA(nn.Module):
     r"""Lightweight multi-scale linear attention"""
@@ -826,50 +762,6 @@ class ConvAttention(nn.Module):
 
     def forward(self, x):
         N, C, H, W = x.size()
-        # print("before:",x.shape)
-
-        # Downsampling
-        # [N,C, H, W] -> [N,c,h,w]
-
-        # def run_att(xin, conv_proj, pwise):
-        #     xout = conv_proj(xin)
-        #     xout = pwise(xout)
-            
-        #     # Transformer part
-        #     N, c, h, w = xout.size()
-        #     # assert H / self.att_stride == h, "H:%d h:%f H/h:%f" %(H,h,H/h)
-
-        #     # print(x.shape, self.num_heads, self.num_keys*self.head_dim, h*w)
-        #     # Separate Q, K, V from linear output
-        #     if self.sha:
-        #         qkv = xout.reshape(N,1, c, h*w)
-        #     else:
-        #         qkv = xout.reshape(N, self.num_heads, self.num_keys*self.head_dim, h*w)
-
-            
-            
-        #     qkv = qkv.permute(0, 1, 3, 2) # [N, Head, SeqLen, Dims]
-            
-        #     if self.newhdim:
-        #         qt, kt= int(self.input_dim*3*self.head_dim_mul / (self.num_heads*6)), int(self.input_dim*3*self.head_dim_mul / (self.num_heads*6))*2 #int(self.input_dim*3*0.5 * self.head_dim_mul / self.num_heads)#, int(self.input_dim*3* 0.5* self.head_dim_mul / self.num_heads)
-        #         # kt = qkv.shape[-1] - self.o_proj_inpdim
-        #         q, k, v = qkv[:,:,:,:qt], qkv[:,:,:,qt:kt], qkv[:,:,:,kt:]
-        #         # print(self.head_dim ,self.num_heads ,self.num_keys,qt,kt)
-        #         # assert q.shape[-1] + k.shape[-1] + v.shape[-1] == qkv.shape[-1], str(qkv.shape) + "|| %d %d %d %d %f" % (q.shape[-1],k.shape[-1],v.shape[-1], self.input_dim, self.head_dim_mul)
-        #     elif self.full:
-        #         q, k, v = qkv.chunk(self.num_keys, dim=-1) # [N,Head,Seqlen,dims/3]
-        #     else:
-        #         q, v = qkv.chunk(self.num_keys, dim=-1) # [N,Head,Seqlen,dims/2]
-        #         k = q / LA.vector_norm(q,dim=(1,3),keepdim=True)  # [N, head, L, embed] normalize q vector
-        #     # assert (q.shape[-1] == k.shape[-1] and k.shape[-1] == v.shape[-1]) or (q.shape[-1] == k.shape[-1] and self.newhdim), "shapes of q, k and v don't align!"
-            
-   
-        #     # Determine value outputs
-        #     if not self.sda is None:
-        #         values, attention = self.sda(q,k,v)
-        #     else:
-        #         values, attention = self.scaled_dot_product(q, k, v, mask=None) # [N,head,Seqlen,dims/3]
-        #     return values, c, h, w
 
         if self.mscale:
             assert False
@@ -956,117 +848,6 @@ class ConvAttention(nn.Module):
         return o[:N,:C,:H,:W]
 
 
-class ConvCombAttention(nn.Module):
-    def __init__(self, input_dim, full=True, head_dim_mul=1.0, att_stride=4, att_kernel=7, dconvkernel=True, multcut=False, sha=False, actit=False, mscale=False):
-        super().__init__()
-        # assert input_dim % num_heads == 0, "Embedding dimension must be 0 modulo number of heads. Problem embed: %d | num_heads %d" % (input_dim, num_heads)
-        # input_dim = chs
-        chs = input_dim
-        self.multcut = multcut
-        self.num_heads_sp = int(max(1,(input_dim*head_dim_mul)//30))
-        self.input_dim = input_dim
-        self.head_dim_sp = int((input_dim // self.num_heads_sp) * head_dim_mul)
-        self.full = full
-        self.num_keys = (3 if full else 2)
-        self.att_stride = att_stride
-        # Stack all weight matrices 1...h together for efficiency
-        # Note that in many implementations you see "bias=False" which is optional
-        # self.qkv_proj = nn.Linear(input_dim, self.num_keys * self.head_dim * self.num_heads)
-        # self.q_proj = nn.Linear(input_dim, self.head_dim * self.num_heads)
-        # self.k_proj = nn.Linear(input_dim, self.head_dim * self.num_heads)
-        # self.v_proj = nn.Linear(input_dim, self.head_dim * self.num_heads)
-        total_dim = int(self.head_dim_sp * self.num_heads_sp * self.num_keys)
-        
-        # start
-        self.downsampling = nn.Sequential(nn.Conv2d(input_dim, input_dim, kernel_size=att_kernel, stride=att_stride, padding=att_kernel//2, groups=input_dim, bias=False), nn.BatchNorm2d(input_dim))
-        
-        # channel
-        self.pwise_ch = nn.Conv2d(input_dim, input_dim*self.num_keys, kernel_size=1, stride=1, padding=0, bias=False)
-        self.out_ch = nn.Conv2d(input_dim, input_dim, kernel_size=1,stride=1,padding=0)
-        self.LN_ch = nn.GroupNorm(num_groups=1, num_channels=input_dim)
-
-        # spatial
-        self.pwise_sp = nn.Conv2d(input_dim, total_dim, kernel_size=1, stride=1, padding=0, bias=False)
-        self.out_sp = nn.Conv2d(self.head_dim_sp*self.num_heads_sp, input_dim, kernel_size=1,stride=1,padding=0)
-        self.LN_sp = nn.GroupNorm(num_groups=1, num_channels=input_dim)
-
-        if multcut:
-            self.mulskip_extrac = nn.Sequential(
-                    nn.Conv2d(chs, chs, kernel_size=3,padding=1, groups=chs),
-                    nn.BatchNorm2d(chs),
-                    nn.SiLU(),
-                    nn.Conv2d(chs, chs, kernel_size=1,padding=0),
-                    nn.BatchNorm2d(chs),
-                    nn.SiLU(),
-                    nn.Conv2d(chs, chs, kernel_size=3,padding=1, groups=chs),
-                    # nn.BatchNorm2d(chs),
-                    # MBConv(chs, chs, expans=1, use_se=False),
-                    nn.Sigmoid()
-                )
-
-
-        self.upsampling = nn.ConvTranspose2d(input_dim, input_dim, kernel_size=att_stride*(2 if dconvkernel else 1), stride=att_stride, padding=att_stride//2 if dconvkernel else 0 , groups=input_dim)
-        if att_stride == 1:
-            self.upsampling = nn.ConvTranspose2d(input_dim, input_dim, kernel_size=3, stride=1, padding=1, groups=input_dim)
-          
-          
-    def scaled_dot_product(self, q, k, v, mask=None):
-        d_k = q.size()[-1]
-        attn_logits = torch.matmul(q, k.transpose(-2, -1))
-        attn_logits = attn_logits / math.sqrt(d_k)
-        if mask is not None:
-            attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
-            assert False, "no masks included!"
-        attention = F.softmax(attn_logits, dim=-1)
-        values = torch.matmul(attention, v)
-        return values, attention
-
-    def forward(self, x, mask=None):
-        # print("before:",x.shape)
-        
-        # Downsampling
-        # [N,C, H, W] -> [N,c,h,w]
-        x_down = self.downsampling(x)
-        N, C, H, W = x_down.size()
-
-        ## CHANNEL
-        xout = self.LN_ch(x_down)
-        xout = self.pwise_ch(xout) # [N,3C,H,W]
-        xout = xout.reshape(N, 1, self.num_keys*C, H*W)
-        # SDA in:[N,Head,Seqlen,dims/3]
-        q, k, v = xout.chunk(self.num_keys, dim=2)
-        values, _ = self.scaled_dot_product(q,k,v)
-        values = values.reshape(N,C,H,W)
-        values = self.out_ch(values)
-        x_down = x_down + values
-
-        ## SPATIAL
-        xout = self.LN_sp(x_down)
-        xout = self.pwise_sp(xout)
-
-        qkv = xout.reshape(N, self.num_heads_sp, self.num_keys*self.head_dim_sp, H*W)
-        qkv = qkv.permute(0, 1, 3, 2) # [N, Head, SeqLen, Dims]
-        q, k, v = qkv.chunk(self.num_keys, dim=-1) # [N,Head,Seqlen,dims/3]
-        # Determine value outputs
-        values, attention = self.scaled_dot_product(q, k, v, mask=None) # [N,head,Seqlen,dims/3]
-        
-        values = self.out_sp(values.permute(0,1,3,2).reshape(N,self.head_dim_sp*self.num_heads_sp,H,W)) #[N,C,h,w]
-        
-        # Residual from before LN
-        x_down = x_down + values
-
-        ## Upsampling
-        if False and H != h:
-            o = F.interpolate(x_down, size=(H,W), mode='nearest')
-        else:
-            o = self.upsampling(x_down)
-        
-        if self.multcut:
-            o = o * self.mulskip_extrac(x)
-        
-        x = x + o
-        return x
-
 
 class LowFormerBlock(nn.Module):
     def __init__(
@@ -1082,13 +863,10 @@ class LowFormerBlock(nn.Module):
         bb_convin2=False,
         mscale=False,
         grouping=1,
-        convcomb=False,
         actit=False,
         head_dim_mul=False,
         stage_num=-1,
-        bb_smbconv=False,
         sha=False,
-        new_smbconv=False,
         old_way_norm=False,
         just_unfused=False,
         noattention=False,
@@ -1100,7 +878,7 @@ class LowFormerBlock(nn.Module):
       
         if bb_convattention:# and not noattention:
             # Params
-            attvers = ConvCombAttention if convcomb else ConvAttention 
+            attvers = ConvAttention 
             att_stride = 2 if stage_num==3 or (bb_convin2 and stage_num < 3) else (4 if stage_num < 3 else 1)
             if nostrideatt:
                 att_stride = 1
@@ -1132,22 +910,13 @@ class LowFormerBlock(nn.Module):
                                                    IdentityLayer()))
         
         # FUSE MBCONV
-        if fuseconv and in_channels < 256 and not just_unfused:
+        if (fuseconv and in_channels < 256 and not just_unfused) or (fuseconvall and not just_unfused):
             local_module = FusedMBConv(
                 in_channels=in_channels,
                 out_channels=in_channels,
                 expand_ratio=expand_ratio,
                 use_bias=(True, False),
                 norm=(None, norm) if old_way_norm else norm,
-                act_func=(act_func, None),
-            )
-        elif fuseconvall and not just_unfused: #TODO
-            local_module = FusedMBConv(
-                in_channels=in_channels,
-                out_channels=in_channels,
-                expand_ratio=expand_ratio,
-                use_bias=(True, False),
-                norm=(None, norm) if old_way_norm else norm, 
                 act_func=(act_func, None),
             )
         else:
@@ -1159,8 +928,6 @@ class LowFormerBlock(nn.Module):
                 use_bias=(True, True, False),
                 norm=(None, None, norm),
                 act_func=(act_func, act_func, None),
-                bb_smbconv=bb_smbconv,
-                new_smbconv=new_smbconv,
             )
         
         local_module = ResidualBlock(local_module, IdentityLayer())

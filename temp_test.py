@@ -12,7 +12,13 @@ def main():
     out = model(inp)
     print([(k, v.shape) for k, v in out.items()])
     
-    
+
+def main2():
+    path = "moritz@158.110.40.61:/home/moritz/Research/efficientvit-master/requirements.txt"
+    with open(path, "r") as read_file:
+        lines = read_file.readlines()
+    print(lines)
+
 if __name__ == "__main__":
-    main()
+    main2()
     

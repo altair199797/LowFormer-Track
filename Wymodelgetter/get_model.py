@@ -79,7 +79,7 @@ def create_cls_model(name: str, pretrained=True, weight_url: str or None = None,
                 raise ValueError(f"Do not find the pretrained weight of {name}.")
             else:
                 weight = load_state_dict_from_file(weight_url)
-                model.load_state_dict(weight)
+                model.load_state_dict(weight, strict=False)
     except Exception as e:
         print("Model weights could not be loaded!!!!!!!!!!!!!!!!!!!",e)
         assert False
@@ -102,7 +102,11 @@ def get_lowformer(config_path="Wymodelgetter/configs/b3.yaml", checkpoint_path="
     model = create_cls_model(weight_url=checkpoint_path, pretrained=True, less_layers=0, torchscriptsave=False, **config["net_config"])
     
     model = model.backbone
-    if cfg.MODEL.OLDWAY:
+    print(vars(cfg.MODEL))
+    if not "OLDWAY" in vars(cfg.MODEL):
+        print("mobilevit-init!")
+        model.max_stage_id = 3
+    elif cfg.MODEL.OLDWAY:
         model.max_stage_id = 3
     else:
         if cfg.MODEL.LOW_FEAT_FUSE:

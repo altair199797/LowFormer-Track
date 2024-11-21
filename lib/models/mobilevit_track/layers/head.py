@@ -3,7 +3,7 @@ import torch, sys
 import torch.nn.functional as F
 
 from .frozen_bn import FrozenBatchNorm2d
-from ..modules.mobilevitv2_head import SeparableSelfAttentionHeadModule, SeparableSelfAttentionLiteHeadModule
+from ..modules.mobilevitv2_head import SeparableSelfAttentionHeadModule, SeparableSelfAttentionLiteHeadModule, LowFormerHeadModule
 
 
 def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1,
@@ -1038,8 +1038,8 @@ def build_box_head(cfg, hidden_dim):
             feat_sz = int(cfg.DATA.SEARCH.SIZE / stride)
             center_head = AvgPoolCenterPredictor(hidden_dim, hidden_dim, num_layers=4, feat_sz=feat_sz,
                                              stride=stride)  # dim_in, dim_hidden, dim_out, 3 layers
-            
-        elif cfg.MODEL.HEAD.TYPE == "CENTER_SSAT" or "CENTER_SSAT_LITE":
+        
+        elif cfg.MODEL.HEAD.TYPE in ["CENTER_SSAT", "CENTER_SSAT_LITE", "CENTER_SSAT_LOWFORM"]:
             feat_sz = int(cfg.DATA.SEARCH.SIZE / stride)
             config = {"cls":{
                     "in_channels": 128,
@@ -1068,7 +1068,36 @@ def build_box_head(cfg, hidden_dim):
                         "conv_layer_activation_name": "relu"
                     }
             }
-            if cfg.MODEL.HEAD.TYPE == "CENTER_SSAT":
+            if cfg.MODEL.HEAD.TYPE == "CENTER_SSAT_LOWFORM":
+                config = {"cls":{
+                    "in_channels": cfg.MODEL.HEAD.NUM_CHANNELS,
+                    "attn_unit_dim": cfg.MODEL.HEAD.NUM_CHANNELS,
+                    "ffn_multiplier": 2,
+                    "attn_blocks": 2,
+                    "patch_h": 1,
+                    "patch_w": 1,
+                    "stride": 1,
+                    "mv_expand_ratio": 2,
+                    "block_type": "mobilevit",
+                    "conv_layer_normalization_name": 'batch_norm',
+                    "conv_layer_activation_name": "relu",
+                    },
+                    "reg":{
+                        "in_channels": cfg.MODEL.HEAD.NUM_CHANNELS,
+                        "attn_unit_dim": cfg.MODEL.HEAD.NUM_CHANNELS,
+                        "ffn_multiplier": 2,
+                        "attn_blocks": 4,
+                        "patch_h": 1,
+                        "patch_w": 1,
+                        "stride": 1,
+                        "mv_expand_ratio": 2,
+                        "block_type": "mobilevit",
+                        "conv_layer_normalization_name": 'batch_norm',
+                        "conv_layer_activation_name": "relu"
+                    }
+            }
+                center_head = LowFormerHeadModule(config, in_channels=cfg.MODEL.HEAD.NUM_CHANNELS, attn_unit_dim=256, feat_sz = feat_sz)
+            elif cfg.MODEL.HEAD.TYPE == "CENTER_SSAT":
                 center_head = SeparableSelfAttentionHeadModule(config, in_channels=128, attn_unit_dim=256, feat_sz = feat_sz)
             elif cfg.MODEL.HEAD.TYPE == "CENTER_SSAT_LITE":
                 center_head = SeparableSelfAttentionLiteHeadModule(config, in_channels=128, attn_unit_dim=256, feat_sz = feat_sz)

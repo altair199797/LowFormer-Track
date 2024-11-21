@@ -17,8 +17,7 @@ from lib.models.mobilevit_track.mobilevit_v2 import MobileViTv2_backbone
 from lib.utils.box_ops import box_xyxy_to_cxcywh
 from easydict import EasyDict as edict
 
-from Wymodelgetter.ops import LowFormerBlock
-
+from Wymodelgetter.ops import LowFormerBlock, FusedMBConv
 
 
 class LowFormerNeck(nn.Module):
@@ -161,11 +160,20 @@ class LowFormer_Track(nn.Module):
         self.no_grad_backbone = self.cfg.TRAIN.NO_GRAD_BACKBONE
         self.no_template_feats = self.cfg.MODEL.NO_TEMPLATE_FEATS
         self.model_return_template =  self.cfg.MODEL.RETURN_TEMPLATE
-        
+        self.prepend_layer = self.cfg.MODEL.PREPEND_LAYER
         if self.additional_layer:
             self.add_layers = nn.ModuleList([LowFormerBlock(in_channels=chs,fuseconv=True, bb_convattention=True, bb_convin2=True, head_dim_mul=True) for chs in [80,160,320]])
 
+        if self.prepend_layer:
+            self.prep_layers = nn.Sequential(FusedMBConv(3, 3, nopw=True),FusedMBConv(3, 3, nopw=True))
+
+
+
     def execute_backbone(self, merged_image: torch.Tensor):
+        if self.prepend_layer:
+            merged_image = self.prep_layers(merged_image)            
+            
+            
         if self.additional_layer:
             features = {}
             merged_image = self.backbone.input_stem(merged_image)
@@ -187,7 +195,6 @@ class LowFormer_Track(nn.Module):
             merged_image = self.add_layers[2](merged_image)
             features[4] = merged_image.clone()
             # print(merged_image.shape)
-            
         else:
             features = self.backbone(merged_image) # torch.Size([128, 128, 24, 16])
 
@@ -195,7 +202,7 @@ class LowFormer_Track(nn.Module):
         
     def forward(self, merged_image: torch.Tensor):
         ### Backbone
-        if self.no_grad_backbone:#self.cfg.TRAIN.NO_GRAD_BACKBONE:
+        if self.no_grad_backbone and False:#self.cfg.TRAIN.NO_GRAD_BACKBONE:
             with torch.no_grad():
                 features = self.execute_backbone(merged_image) # torch.Size([128, 128, 24, 16])
         else:

@@ -15,7 +15,6 @@ from Wymodelgetter.ops import (
     OpSequential,
     ResBlock,
     ResidualBlock,
-    SMConvLayer,
 )
 from Wymodelgetter.utils import build_kwargs_from_config
 import torchvision.utils as tutils
@@ -59,40 +58,21 @@ class LowFormerBackbone(nn.Module):
         bigit=False,
         mscale=False,
         grouping = 1,
-        convcomb=False,
         head_dim_mul=False,
         nohdimmul=False,
         actit=False,
-        bb_smbconv=False,
-        new_smbconv=False,
-        add_smconv=False,
-        only_smconv=False,
-        smconv_after=False,
-        smconv_pos="befAtt",
-        smconv_dw=False,
-        bb_nosm=False,
         without_mbconv=False,
         just_unfused=False,
         mlpremoved=False,
         nostrideatt=False,
         noattention=False,
-        vitafter2=False,
-        vitafter22=False,
-        vitafter1=False,
-        bb_moreatten=0,
-        bb_normal_ds=False,
         sha=False,
-        old_way=False,
         old_way_norm=False, ########### POST WAC
         fusedgroup=False,
-        noattmbconv=False,
     ) -> None:
         super().__init__()
 
-        assert not without_mbconv or add_smconv, "softmax convs needed when no mbconv present!"
-
-        self.bb_smbconv = bb_smbconv
-        self.bb_moreatten = bb_moreatten
+        
         self.width_list = []
         self.old_way_norm = old_way_norm
         stage_num = 0
@@ -120,25 +100,12 @@ class LowFormerBackbone(nn.Module):
                 norm=norm,
                 act_func=act_func,
                 bb_smbconv=self.bb_smbconv == "all",
-                bb_normal_ds=bb_normal_ds,
-                only_smconv=only_smconv,
-                smconv_dw=smconv_dw,
-                new_smbconv=new_smbconv,
                 just_unfused=just_unfused,
                 self=self,
                 fusedgroup=fusedgroup,
             )
             self.input_stem.append(ResidualBlock(block, IdentityLayer()))
-            if add_smconv:
-                block = SMConvLayer(
-                    in_channels=width_list[0],
-                    out_channels=width_list[0],
-                    norm=norm,
-                    act_func=act_func,
-                    smconv_dw=smconv_dw,
-                    bb_nosm=bb_nosm,
-                )
-                self.input_stem.append(ResidualBlock(block, IdentityLayer()))
+            
         in_channels = width_list[0]
         self.input_stem = OpSequential(self.input_stem)
         self.width_list.append(in_channels)
@@ -152,55 +119,8 @@ class LowFormerBackbone(nn.Module):
             stage = []
             for i in range(d):
                 stride = 2 if i == 0 else 1
-                vitblocknow = stride == 1 and stage_num > (2 - self.bb_moreatten) and self.bb_moreatten
                 # start block with SMconvlayer
-                if stride == 1 and add_smconv and (not smconv_after) and not vitblocknow:
-                    block = SMConvLayer(
-                        in_channels=in_channels,
-                        out_channels=w,
-                        norm=norm,
-                        act_func=act_func,
-                        smconv_dw=smconv_dw,
-                        bb_nosm=bb_nosm,
-                    )
-                    stage.append(ResidualBlock(block, IdentityLayer()))
-
-                # mbconv or myvitblock
-                if vitblocknow:
-                    block = LowFormerBlock(
-                        in_channels=in_channels,
-                        dim=dim,
-                        expand_ratio=expand_ratio,
-                        norm=norm,
-                        act_func=act_func,
-                        fuseconv=fastit,
-                        fuseconvall=fastitv2 or fuse_conv_all,
-                        newhdim=fastitv4,
-                        bb_convattention=bb_convattention,
-                        bb_convin2=bb_convin2,
-                        mscale=mscale,
-                        grouping=grouping,
-                        convcomb=convcomb,
-                        stage_num=stage_num,
-                        bb_smbconv=bb_smbconv == "all" or bb_smbconv == "vitblocks",
-                        sha=False,
-                        add_smconv=add_smconv,
-                        smconv_pos=smconv_pos,
-                        smconv_dw=smconv_dw,
-                        bb_nosm=bb_nosm,
-                        actit=actit,
-                        head_dim_mul=head_dim_mul,
-                        only_smconv=only_smconv,
-                        new_smbconv=new_smbconv,
-                        old_way=old_way,
-                        old_way_norm=old_way_norm,
-                        just_unfused=just_unfused,
-                        noattention=noattention,
-                        nostrideatt=nostrideatt,
-                        mlpremoved=mlpremoved,
-                    )
-                else:
-                    block = self.build_local_block(
+                block = self.build_local_block(
                         in_channels=in_channels,
                         out_channels=w,
                         stride=stride,
@@ -209,86 +129,18 @@ class LowFormerBackbone(nn.Module):
                         grouping=grouping,
                         norm=norm,
                         act_func=act_func,
-                        bb_smbconv=self.bb_smbconv=="all",
-                        bb_normal_ds=bb_normal_ds,
-                        only_smconv=only_smconv,
-                        smconv_dw=smconv_dw,
-                        new_smbconv=new_smbconv,
                         self=self,
                         just_unfused=just_unfused,
                     )
-                    block = ResidualBlock(block, IdentityLayer() if stride == 1 else None)
+                block = ResidualBlock(block, IdentityLayer() if stride == 1 else None)
                     
                     
                 if not without_mbconv or stride != 1:
                     stage.append(block)
                     # in_channels = w
 
-                if add_smconv and smconv_after and not vitblocknow and stride==1:
-                    block = SMConvLayer(
-                        in_channels=w,
-                        out_channels=w,
-                        norm=norm,
-                        act_func=act_func,
-                        smconv_dw=smconv_dw,
-                        bb_nosm=bb_nosm,
-                    )
-                    stage.append(ResidualBlock(block, IdentityLayer()))
                 in_channels = w
-            if vitafter2 and (stage_num > 1 or vitafter1):
-                stage.append(LowFormerBlock(
-                        in_channels=in_channels,
-                        dim=dim,
-                        expand_ratio=expand_ratio,
-                        norm=norm,
-                        act_func=act_func,
-                        fuseconv=fastit,
-                        fuseconvall=fastitv2 or fuse_conv_all,
-                        newhdim=fastitv4 ,
-                        bb_convattention=bb_convattention,
-                        bb_convin2=bb_convin2,
-                        mscale=mscale,
-                        grouping=grouping,
-                        convcomb=convcomb,
-                        stage_num=stage_num,
-                        bb_smbconv=bb_smbconv == "all" or bb_smbconv == "vitblocks",
-                        sha=False,
-                        add_smconv=add_smconv,
-                        smconv_pos=smconv_pos,
-                        smconv_dw=smconv_dw,
-                        bb_nosm=bb_nosm,
-                        actit=actit,
-                        head_dim_mul=head_dim_mul,
-                        only_smconv=only_smconv,
-                        new_smbconv=new_smbconv,
-                        old_way=old_way,
-                        old_way_norm=old_way_norm,
-                        just_unfused=just_unfused,
-                        noattention=noattention,
-                        nostrideatt=nostrideatt,
-                        mlpremoved=mlpremoved,
-                    ))
-                if vitafter22:
-                    stage.append(LowFormerBlock(
-                        in_channels=in_channels,
-                        expand_ratio=expand_ratio,
-                        norm=norm,
-                        act_func=act_func,
-                        fuseconv=fastit,
-                        fuseconvall=fastitv2 or fuse_conv_all,
-                        newhdim=fastitv4,
-                        bb_convattention=bb_convattention,
-                        bb_convin2=bb_convin2,
-                        grouping=grouping,
-                        convcomb=convcomb,
-                        stage_num=stage_num,
-                        actit=actit,
-                        head_dim_mul=head_dim_mul,
-                        just_unfused=just_unfused,
-                        noattention=noattention,
-                        nostrideatt=nostrideatt,
-                        mlpremoved=mlpremoved,
-                    ))
+
             self.stages.append(OpSequential(stage))
             self.width_list.append(in_channels)
             stage_num += 1
@@ -307,38 +159,13 @@ class LowFormerBackbone(nn.Module):
                 norm=norm,
                 act_func=act_func,
                 fewer_norm=False or old_way_norm,
-                bb_smbconv=self.bb_smbconv=="all",
-                bb_normal_ds=bb_normal_ds,
-                only_smconv=only_smconv,
-                smconv_dw=smconv_dw,
-                new_smbconv=new_smbconv,
                 self=self,
                 just_unfused=just_unfused,
                 fusedgroup=fusedgroup,
             )
             stage.append(ResidualBlock(block, None))
             in_channels = w
-            if fastitv2 and stage_num == 3 and False: #TODO
-                for i in range(2):
-                    block = self.build_local_block(
-                        in_channels=in_channels,
-                        out_channels=in_channels,
-                        stride=1,
-                        expand_ratio=expand_ratio,
-                        fusedmbconv=fastit,
-                        grouping=grouping,
-                        norm=norm,
-                        act_func=act_func,
-                        fewer_norm=True,
-                        bb_smbconv=self.bb_smbconv=="all",
-                        bb_normal_ds=bb_normal_ds,
-                        only_smconv=only_smconv,
-                        smconv_dw=smconv_dw,
-                        new_smbconv=new_smbconv,
-                        self=self,
-                        just_unfused=just_unfused,
-                    )
-                    stage.append(ResidualBlock(block, None))
+           
 
             # input_dim, num_heads, full=True, head_dim_mul=1.0, att_stride=4, att_kernel=7, dconvkernel=True
             for _ in range(d):
@@ -355,7 +182,6 @@ class LowFormerBackbone(nn.Module):
                         bb_convin2=bb_convin2,
                         mscale=mscale,
                         grouping=grouping,
-                        convcomb=convcomb,
                         stage_num=stage_num,
                         sha=sha and stage_num > 2,
                         actit=actit,
@@ -373,6 +199,8 @@ class LowFormerBackbone(nn.Module):
 
         self.stages = nn.ModuleList(self.stages)
 
+
+
     @staticmethod
     def build_local_block(
         in_channels: int,
@@ -383,16 +211,10 @@ class LowFormerBackbone(nn.Module):
         act_func: str,
         grouping: int = 1,
         fewer_norm: bool = False,
-        bb_smbconv: bool = False,
-        bb_normal_ds: bool = False,
-        only_smconv: bool = False,
-        smconv_dw: bool = False,
-        new_smbconv: bool = False,
         fusedmbconv: bool = False,
         just_unfused: bool = False,
         self = None,
         fusedgroup=False,
-        
     ) -> nn.Module:
         if expand_ratio == 1:
             ## DEEP Seperable Conv
@@ -417,8 +239,6 @@ class LowFormerBackbone(nn.Module):
                         use_bias=(True, True, False) if fewer_norm else False,
                         norm=(None, None, norm) if fewer_norm or True else norm,
                         act_func=(act_func, act_func, None),
-                        bb_smbconv=bb_smbconv,
-                        new_smbconv=new_smbconv,
                     )
             else:
                 block = DSConv(
@@ -430,27 +250,7 @@ class LowFormerBackbone(nn.Module):
                     act_func=(act_func, None),
                 )
         else: ## ONLY SMCONV
-            if only_smconv:
-                block = SMConvLayer(
-                        in_channels=in_channels,
-                        out_channels=out_channels,
-                        stride=stride,
-                        norm=norm,
-                        act_func=act_func,
-                        smconv_dw=smconv_dw,
-                    )
-            ## NORMDS
-            elif bb_normal_ds and stride > 1:
-                block = ConvLayer(
-                    in_channels=in_channels, 
-                    out_channels=out_channels,
-                    stride=stride,
-                    groups=in_channels, 
-                    norm=norm, 
-                    act_func=act_func
-                )
-            else:
-                if fusedmbconv and not just_unfused:
+            if fusedmbconv and not just_unfused:
                     block = FusedMBConv(
                         in_channels=in_channels,
                         out_channels=out_channels,
@@ -461,20 +261,18 @@ class LowFormerBackbone(nn.Module):
                         act_func=(act_func, None),
                         fusedgroup=fusedgroup,
                     )
-                else:
-                ## LOCAL BLOCK
-                    block = MBConv(
-                        in_channels=in_channels,
-                        out_channels=out_channels,
-                        stride=stride,
-                        expand_ratio=expand_ratio,
-                        grouping=grouping,
-                        use_bias=(True, True, False) if fewer_norm else False,
-                        norm=(None, None, norm) if fewer_norm or True else norm,
-                        act_func=(act_func, act_func, None),
-                        bb_smbconv=bb_smbconv,
-                        new_smbconv=new_smbconv,
-                    )
+            else:
+            ## LOCAL BLOCK
+                block = MBConv(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    stride=stride,
+                    expand_ratio=expand_ratio,
+                    grouping=grouping,
+                    use_bias=(True, True, False) if fewer_norm else False,
+                    norm=(None, None, norm) if fewer_norm or True else norm,
+                    act_func=(act_func, act_func, None),
+                )
         return block
 
     def return_stages(self, n):

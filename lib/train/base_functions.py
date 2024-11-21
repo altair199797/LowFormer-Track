@@ -161,6 +161,24 @@ def get_optimizer_scheduler(net, cfg):
                 p.requires_grad = False
             else:
                 print(n)
+    elif "NO_GRAD_BACKBONE" in vars(cfg.TRAIN) and  cfg.TRAIN.NO_GRAD_BACKBONE:
+        param_dicts = [
+            {"params": [p for n, p in net.named_parameters() if "backbone" not in n and p.requires_grad]},
+            {
+                "params": [p for n, p in net.named_parameters() if "backbone" in n and p.requires_grad],
+                "lr": cfg.TRAIN.LR * cfg.TRAIN.BACKBONE_MULTIPLIER,
+            },
+        ]
+        for n,p in net.named_parameters():
+            if "backbone" in n:
+                p.requires_grad = False
+        #print(param_dicts)
+        if is_main_process():
+            print("Learnable parameters are shown below.")
+            for n, p in net.named_parameters():
+                if p.requires_grad:
+                    print(n)
+    
     else:
         param_dicts = [
             {"params": [p for n, p in net.named_parameters() if "backbone" not in n and p.requires_grad]},

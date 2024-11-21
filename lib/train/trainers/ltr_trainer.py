@@ -80,12 +80,20 @@ class LTRTrainer(BaseTrainer):
         """Do a cycle of training or validation."""
 
         self.actor.train(loader.training)
+        # try:
+        #     self.actor.net.backbone.training = loader.training
+        # except:
+        #     print("didn't find it!")
+        # print("!!!!!!!!!!!!!")
+        # print(loader.training)
+        # print(self.actor.net.backbone.training)
         torch.set_grad_enabled(loader.training)
 
         self._init_timing()
 
         for i, data in enumerate(loader, 1):
-
+            
+            
             self.data_read_done_time = time.time()
             # get inputs
             if self.move_data_to_gpu:
@@ -158,6 +166,7 @@ class LTRTrainer(BaseTrainer):
                 # 5. Write the results to tensorboard
                 stats['ValMetric/AOR'] = ao_
                 stats['ValMetric/SR_0.5'] = sr_0p50_
+                torch.cuda.synchronize()
             else:
                 pass
                 # stats.pop('ValMetric/AOR')
@@ -175,6 +184,9 @@ class LTRTrainer(BaseTrainer):
             if self.wandb_writer is not None and i % self.settings.print_interval == 0:
                 if self.settings.local_rank in [-1, 0]:
                     self.wandb_writer.write_log(self.stats, self.epoch)
+            # if loader.training:
+            #     break
+            
 
         # calculate ETA after every epoch
         epoch_time = self.prev_time - self.start_time

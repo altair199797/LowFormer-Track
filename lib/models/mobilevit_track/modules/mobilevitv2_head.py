@@ -18,7 +18,7 @@ from ..layers.frozen_bn import FrozenBatchNorm2d
 
 
 def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1,
-         freeze_bn=False):
+         freeze_bn=False, seperable=False):
     if freeze_bn:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride,
@@ -26,11 +26,333 @@ def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1,
             FrozenBatchNorm2d(out_planes),
             nn.ReLU(inplace=True))
     else:
+        if seperable:
+            return nn.Sequential(
+                nn.Conv2d(in_planes, in_planes, kernel_size=kernel_size, stride=stride,
+                        padding=padding, dilation=dilation, bias=True, groups=in_planes),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride,
+                        padding=0, dilation=dilation, bias=True),
+                nn.ReLU(inplace=True),
+                nn.BatchNorm2d(out_planes),
+                )
+        
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride,
                       padding=padding, dilation=dilation, bias=True),
             nn.BatchNorm2d(out_planes),
             nn.ReLU(inplace=True))
+
+
+from Wymodelgetter.ops import LowFormerBlock
+
+class LowFormerHeadModule(BaseModule):
+    """
+    This class defines the `MobileViTv2 <https://arxiv.org/abs/2206.02680>`_ block
+
+    Args:
+        opts: command line arguments
+        in_channels (int): :math:`C_{in}` from an expected input of size :math:`(N, C_{in}, H, W)`
+        attn_unit_dim (int): Input dimension to the attention unit
+        ffn_multiplier (int): Expand the input dimensions by this factor in FFN. Default is 2.
+        n_attn_blocks (Optional[int]): Number of attention units. Default: 2
+        attn_dropout (Optional[float]): Dropout in multi-head attention. Default: 0.0
+        dropout (Optional[float]): Dropout rate. Default: 0.0
+        ffn_dropout (Optional[float]): Dropout between FFN layers in transformer. Default: 0.0
+        patch_h (Optional[int]): Patch height for unfolding operation. Default: 8
+        patch_w (Optional[int]): Patch width for unfolding operation. Default: 8
+        conv_ksize (Optional[int]): Kernel size to learn local representations in MobileViT block. Default: 3
+        dilation (Optional[int]): Dilation rate in convolutions. Default: 1
+        attn_norm_layer (Optional[str]): Normalization layer in the attention block. Default: layer_norm_2d
+    """
+
+    def __init__(
+        self,
+        opts,
+        in_channels: int,
+        attn_unit_dim: int,
+        feat_sz=16,
+        ffn_multiplier: Optional[Union[Sequence[Union[int, float]], int, float]] = 2.0,
+        n_attn_blocks: Optional[int] = 2,
+        attn_dropout: Optional[float] = 0.0,
+        dropout: Optional[float] = 0.0,
+        ffn_dropout: Optional[float] = 0.0,
+        patch_h: Optional[int] = 1,
+        patch_w: Optional[int] = 1,
+        conv_ksize: Optional[int] = 3,
+        dilation: Optional[int] = 1,
+        attn_norm_layer: Optional[str] = "layer_norm_2d",
+        *args,
+        **kwargs
+    ) -> None:
+
+        super(LowFormerHeadModule, self).__init__()
+
+        self.pre_ssat_cls = ConvLayer(
+            opts=opts["cls"],
+            in_channels=opts["cls"]["in_channels"],
+            out_channels=opts["cls"]["in_channels"],
+            kernel_size=conv_ksize,
+            stride=1,
+            use_norm=True,
+            use_act=True,
+        )
+
+        self.pre_ssat_reg = ConvLayer(
+            opts=opts["reg"],
+            in_channels=opts["reg"]["in_channels"],
+            out_channels=opts["reg"]["in_channels"],
+            kernel_size=conv_ksize,
+            stride=1,
+            use_norm=True,
+            use_act=True,
+        )
+
+        
+        self.global_rep_reg = nn.Sequential(*[LowFormerBlock(in_channels=opts["reg"]["in_channels"],fuseconv=True, bb_convattention=True, bb_convin2=True, head_dim_mul=True) for i in range(opts["reg"]["attn_blocks"])])
+        self.global_rep_cls = nn.Sequential(*[LowFormerBlock(in_channels=opts["cls"]["in_channels"],fuseconv=True, bb_convattention=True, bb_convin2=True, head_dim_mul=True) for i in range(opts["cls"]["attn_blocks"])])
+        
+
+        
+        # center predict
+        freeze_bn = False
+        cls_in_channel = self.pre_ssat_cls.out_channels
+        self.conv1_ctr = conv(cls_in_channel, cls_in_channel, freeze_bn=freeze_bn, seperable=True)
+        self.conv2_ctr = conv(cls_in_channel, cls_in_channel // 2, freeze_bn=freeze_bn, seperable=True)
+        self.conv3_ctr = conv(cls_in_channel // 2, cls_in_channel // 4, freeze_bn=freeze_bn, seperable=True)
+        self.conv4_ctr = nn.Conv2d(cls_in_channel // 4, 1, kernel_size=1)
+
+        # offset regress with conv weights
+        cls_in_reg = self.pre_ssat_reg.out_channels
+        self.conv1_offset = conv(cls_in_reg, cls_in_reg, freeze_bn=freeze_bn, seperable=True)
+        self.conv2_offset = conv(cls_in_reg, cls_in_reg // 2, freeze_bn=freeze_bn, seperable=True)
+        self.conv3_offset = conv(cls_in_reg // 2, cls_in_reg // 4, freeze_bn=freeze_bn, seperable=True)
+        self.conv4_offset = nn.Conv2d(cls_in_reg // 4, 2, kernel_size=1)
+
+        # size regress with conv weights
+        self.conv1_size = conv(cls_in_reg, cls_in_reg, freeze_bn=freeze_bn, seperable=True)
+        self.conv2_size = conv(cls_in_reg, cls_in_reg // 2, freeze_bn=freeze_bn, seperable=True)
+        self.conv3_size = conv(cls_in_reg // 2, cls_in_reg // 4, freeze_bn=freeze_bn, seperable=True)
+        self.conv4_size = nn.Conv2d(cls_in_reg // 4, 2, kernel_size=1)
+
+        self.patch_h = patch_h
+        self.patch_w = patch_w
+        self.patch_area = self.patch_w * self.patch_h
+        self.feat_sz = feat_sz
+
+        self.cnn_in_dim = in_channels
+        self.cnn_out_dim = opts["cls"]["in_channels"]
+        self.transformer_in_dim = attn_unit_dim
+        self.dropout = dropout
+        self.attn_dropout = attn_dropout
+        self.ffn_dropout = ffn_dropout
+        self.n_blocks = n_attn_blocks
+        self.conv_ksize = conv_ksize
+
+        self.enable_coreml_compatible_fn = getattr(
+            opts, "common.enable_coreml_compatible_module", False
+        )
+        # self.enable_coreml_compatible_fn = True
+
+        if self.enable_coreml_compatible_fn:
+            # we set persistent to false so that these weights are not part of model's state_dict
+            self.register_buffer(
+                name="unfolding_weights",
+                tensor=self._compute_unfolding_weights(),
+                persistent=False,
+            )
+            
+
+    def _compute_unfolding_weights(self) -> Tensor:
+        # [P_h * P_w, P_h * P_w]
+        weights = torch.eye(self.patch_h * self.patch_w, dtype=torch.float)
+        # [P_h * P_w, P_h * P_w] --> [P_h * P_w, 1, P_h, P_w]
+        weights = weights.reshape(
+            (self.patch_h * self.patch_w, 1, self.patch_h, self.patch_w)
+        )
+        # [P_h * P_w, 1, P_h, P_w] --> [P_h * P_w * C, 1, P_h, P_w]
+        weights = weights.repeat(self.cnn_out_dim, 1, 1, 1)
+        return weights
+
+    
+    def unfolding_pytorch(self, feature_map: Tensor) -> Tuple[Tensor, Tuple[int, int]]:
+        batch_size, in_channels, img_h, img_w = feature_map.shape
+        # [B, C, H, W] --> [B, C, P, N]
+        patches = F.unfold(
+            feature_map,
+            kernel_size=(self.patch_h, self.patch_w),
+            stride=(self.patch_h, self.patch_w),
+        )
+        patches = patches.reshape(
+            batch_size, in_channels, self.patch_h * self.patch_w, -1
+        )
+        return patches, (img_h, img_w)
+
+    def folding_pytorch(self, patches: Tensor, output_size: Tuple[int, int]) -> Tensor:
+        batch_size, in_dim, patch_size, n_patches = patches.shape
+        # [B, C, P, N]
+        patches = patches.reshape(batch_size, in_dim * patch_size, n_patches)
+        feature_map = F.fold(
+            patches,
+            output_size=output_size,
+            kernel_size=(self.patch_h, self.patch_w),
+            stride=(self.patch_h, self.patch_w),
+        )
+        return feature_map
+
+    
+    def resize_input_if_needed(self, x):
+        batch_size, in_channels, orig_h, orig_w = x.shape
+        if orig_h % self.patch_h != 0 or orig_w % self.patch_w != 0:
+            new_h = int(math.ceil(orig_h / self.patch_h) * self.patch_h)
+            new_w = int(math.ceil(orig_w / self.patch_w) * self.patch_w)
+            x = F.interpolate(
+                x, size=(new_h, new_w), mode="bilinear", align_corners=True
+            )
+        return x
+
+
+        
+    def forward_spatial(self, x: Tensor, *args, **kwargs) -> Tensor:
+        # x = self.resize_input_if_needed(x)
+
+        x_cls = self.pre_ssat_cls(x)
+        x_reg = self.pre_ssat_reg(x)
+
+
+        # learn global representations on all patches
+        x_cls = self.global_rep_cls(x_cls)
+        x_reg = self.global_rep_reg(x_reg)
+
+
+        """ Forward pass through the lightweight convolutional block. """
+        score_map_ctr, size_map, offset_map = self.get_score_map(x_cls, x_reg)
+
+        # assert gt_score_map is None
+        bbox = self.cal_bbox(score_map_ctr, size_map, offset_map)
+
+        return score_map_ctr, bbox, size_map, offset_map
+
+    def forward(
+        self, x: Union[Tensor, Tuple[Tensor]], *args, **kwargs
+    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        
+        if isinstance(x, Tensor):
+            # for image data
+            return self.forward_spatial(x)
+        else:
+            raise NotImplementedError
+
+    def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
+        max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
+        idx_y = idx // self.feat_sz
+        idx_x = idx % self.feat_sz
+
+        idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
+        size = size_map.flatten(2).gather(dim=2, index=idx)
+        offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+
+        # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
+        #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
+        # cx, cy, w, h
+        bbox = torch.cat([(idx_x.to(torch.float) + offset[:, :1]) / self.feat_sz,
+                          (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
+                          size.squeeze(-1)], dim=1)
+
+        if return_score:
+            return bbox, max_score
+        return bbox
+
+    def get_pred(self, score_map_ctr, size_map, offset_map):
+        max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
+        idx_y = idx // self.feat_sz
+        idx_x = idx % self.feat_sz
+
+        idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
+        size = size_map.flatten(2).gather(dim=2, index=idx)
+        offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+
+        # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
+        #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
+        return size * self.feat_sz, offset
+
+    def get_score_map(self, x_cls, x_reg):
+
+        def _sigmoid(x):
+            y = torch.clamp(x.sigmoid_(), min=1e-4, max=1 - 1e-4)
+            return y
+
+        # ctr branch
+        x_ctr1 = self.conv1_ctr(x_cls)
+        x_ctr2 = self.conv2_ctr(x_ctr1)
+        x_ctr3 = self.conv3_ctr(x_ctr2)
+        score_map_ctr = self.conv4_ctr(x_ctr3)
+
+        x_offset1 = self.conv1_offset(x_reg)
+        x_offset2 = self.conv2_offset(x_offset1)
+        x_offset3 = self.conv3_offset(x_offset2)
+        score_map_offset = self.conv4_offset(x_offset3)
+
+        x_size1 = self.conv1_size(x_reg)
+        x_size2 = self.conv2_size(x_size1)
+        x_size3 = self.conv3_size(x_size2)
+        score_map_size = self.conv4_size(x_size3)
+
+        return _sigmoid(score_map_ctr), _sigmoid(score_map_size), score_map_offset
+
+    def profile_module(
+        self, input: Tensor, *args, **kwargs
+    ) -> Tuple[Tensor, float, float]:
+        params = macs = 0.0
+        input = self.resize_input_if_needed(input)
+
+        res = input
+        out, p, m = module_profile(module=self.local_rep, x=input)
+        params += p
+        macs += m
+
+        patches, output_size = self.unfolding_pytorch(feature_map=out)
+
+        patches, p, m = module_profile(module=self.global_rep, x=patches)
+        params += p
+        macs += m
+
+        fm = self.folding_pytorch(patches=patches, output_size=output_size)
+
+        out, p, m = module_profile(module=self.conv_proj, x=fm)
+        params += p
+        macs += m
+
+        return res, params, macs
+
+    def __repr__(self) -> str:
+        repr_str = "{}(".format(self.__class__.__name__)
+
+        repr_str += "\n\t Local representations"
+        if isinstance(self.local_rep, nn.Sequential):
+            for m in self.local_rep:
+                repr_str += "\n\t\t {}".format(m)
+        else:
+            repr_str += "\n\t\t {}".format(self.local_rep)
+
+        repr_str += "\n\t Global representations with patch size of {}x{}".format(
+            self.patch_h,
+            self.patch_w,
+        )
+        if isinstance(self.global_rep, nn.Sequential):
+            for m in self.global_rep:
+                repr_str += "\n\t\t {}".format(m)
+        else:
+            repr_str += "\n\t\t {}".format(self.global_rep)
+
+        if isinstance(self.conv_proj, nn.Sequential):
+            for m in self.conv_proj:
+                repr_str += "\n\t\t {}".format(m)
+        else:
+            repr_str += "\n\t\t {}".format(self.conv_proj)
+
+        repr_str += "\n)"
+        return repr_str
 
 
 class SeparableSelfAttentionHeadModule(BaseModule):
