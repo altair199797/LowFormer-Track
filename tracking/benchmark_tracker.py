@@ -35,7 +35,6 @@ def setup_onnx_gpu(model_path, inp, out):
 def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=False,  args=None):
     # device = "cpu" if cpu else "cuda:0"
     inp = torch.randn(batch_size, 3, image_sizes[0], image_sizes[1]).cuda()
-    
     # Transform Model
     if args.optit:
         model.eval()
@@ -135,12 +134,12 @@ def short_test(tracker):
 
 class TrackerWrapper(torch.nn.Module):
     
-    def __init__(self, net, args, nobb=False):
+    def __init__(self, net, args, nobb=False, base_size=128):
         super().__init__()
         self.net = net
         self.nobb = nobb
         
-        z = self.net.backbone.conv_1.forward(torch.randn(1,3,128,128).cuda())
+        z = self.net.backbone.conv_1.forward(torch.randn(1,3,base_size,base_size).cuda())
 
         # layer_1 (i.e., MobileNetV2 block) output
         z = self.net.backbone.layer_1.forward(z)
@@ -150,7 +149,7 @@ class TrackerWrapper(torch.nn.Module):
         self.z = z
         
         if self.nobb:
-            x = torch.randn(1,3,256,256).cuda()
+            x = torch.randn(1,3,base_size*2,base_size*2).cuda()
             self.x, self.z = self.net.backbone(x=x, z=self.z)
         
     def forward(self, x):
@@ -185,24 +184,23 @@ def main():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument("--optit", action="store_true", default=False)
     parser.add_argument("--onnx", action="store_true", default=False)
-    
-    
-    
-    args = parser.parse_args()
-    
+    parser.add_argument('--basesize', type=int, default=128)
     
     args = parser.parse_args()
+    
+    base_size = args.basesize
+        
     torch.cuda.set_device(args.gpu)
     
     
     tracker = init_model(args)
     if not "lowformer" in args.config:
-        tracker = TrackerWrapper(tracker, args)
-    short_test(tracker)
-    show_params_flops(tracker, 128, 256)
+        tracker = TrackerWrapper(tracker, args, base_size=base_size)
+    # short_test(tracker)
+    show_params_flops(tracker, base_size, base_size*2)
     
     with torch.no_grad():
-        testrun_it(tracker, args=args)
+        testrun_it(tracker, image_sizes=(base_size*3, base_size*2),args=args)
     
     
 

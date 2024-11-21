@@ -29,16 +29,19 @@ class MobileViTv2Track(BaseTracker):
             if args is None or args.ckpos == -10:
                 pass
             else:
-                ckpath = self.params.checkpoint.split("/")[:-1]
-                ckpath = "/".join(ckpath)
-                cks = os.listdir(ckpath)
-                ck_chosen = sorted(cks,key= lambda x: int(x.split("ep")[-1].replace(".pth.tar","")))#[1]#[-1]
-                ck_chosen = ck_chosen[args.ckpos]
-                ckpath = os.path.join(ckpath,ck_chosen)
-                    
-                network.load_state_dict(torch.load(ckpath, map_location='cpu')['net'], strict=True)
-                print("loaded checkpoint at:", ckpath)
-                print("EPOCH:",int(ck_chosen.split("ep")[-1].replace(".pth.tar","")))
+                try:
+                    ckpath = self.params.checkpoint.split("/")[:-1]
+                    ckpath = "/".join(ckpath)
+                    cks = os.listdir(ckpath)
+                    ck_chosen = sorted(cks,key= lambda x: int(x.split("ep")[-1].replace(".pth.tar","")))#[1]#[-1]
+                    ck_chosen = ck_chosen[args.ckpos]
+                    ckpath = os.path.join(ckpath,ck_chosen)
+                        
+                    network.load_state_dict(torch.load(ckpath, map_location='cpu')['net'], strict=True)
+                    print("loaded checkpoint at:", ckpath)
+                    print("EPOCH:",int(ck_chosen.split("ep")[-1].replace(".pth.tar","")))
+                except:
+                    print("NO CHECKPOINT LOADED!!")
         else:
             network.load_state_dict(torch.load(self.params.checkpoint, map_location='cpu')['net'], strict=True)
         

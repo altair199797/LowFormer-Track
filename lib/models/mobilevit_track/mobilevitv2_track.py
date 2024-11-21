@@ -47,15 +47,17 @@ class MobileViTv2_Track(nn.Module):
         # print("sizes:",search.shape, template.shape)
         x, z = self.backbone(x=search, z=template)
 
+        # print("after bb:", x.shape, z.shape)
         # Forward neck
         x, z = self.neck(x, z)
 
+        # print("after neck:", x.shape, z.shape)
         # Forward feature fusor
         feat_fused = self.feature_fusor(z, x)
 
+        # print("after ff:", x.shape, z.shape)
         # Forward head
         out = self.forward_head(feat_fused, None)
-
         return out
 
     def forward_head(self, backbone_feature, gt_score_map=None):
@@ -94,6 +96,40 @@ class MobileViTv2_Track(nn.Module):
 
 
 
+class LowFormerWrapper(nn.Module):
+
+    def __init__(self, backbone, training):
+        super().__init__()
+        self.backbone = backbone
+        self.training_it = training
+        
+        self.conv_1 = self.backbone.input_stem
+        self.layer_1 = self.backbone.stages[0]
+        self.layer_2 = self.backbone.stages[1]
+
+    def forward(self, x, z):
+        # 224 -> 112
+        x = self.backbone.input_stem(x)
+        if self.training_it:
+            # 112 -> 56
+            z = self.backbone.input_stem(z)
+
+        for ind, stage in enumerate(self.backbone.stages):
+            if ind == len(self.backbone.stages)-1:
+                merged = torch.cat([x,torch.cat([z,z.clone()],dim=3)], dim=2)
+                merged = stage(merged)
+                x, z = merged[:,:,:z.shape[2],:], merged[:,:,z.shape[2]:,:int(z.shape[3]//2)]
+            else:
+                x = stage(x)
+                if self.training_it or ind > 1:
+                    z = stage(z)
+                # 0: 112 -> 56 , 56 -> 28
+                # 1: 56 -> 28,  28 -> 14
+                # 2: 28 -> 14 ,  14 -> 7
+
+        return x, z
+
+
 
 def build_mobilevitv2_track(cfg, settings=None, training=True):
     current_dir = os.path.dirname(os.path.abspath(__file__))  # This is your Project Root
@@ -112,6 +148,11 @@ def build_mobilevitv2_track(cfg, settings=None, training=True):
             backbone.mixed_attn = False
         hidden_dim = backbone.model_conf_dict['layer4']['out']
         patch_start_index = 1
+    elif "lowformer" in cfg.MODEL.BACKBONE.TYPE:
+        from lib.models.mobilevit_track.lowformer_track import build_lowformer_backbone
+        backbone = build_lowformer_backbone(cfg.MODEL.BACKBONE.TYPE.replace("lowformer_",""), cfg)
+        hidden_dim = cfg.MODEL.HEAD.NUM_CHANNELS
+        backbone = LowFormerWrapper(backbone, training=training)
     else:
         raise NotImplementedError
 
@@ -124,7 +165,11 @@ def build_mobilevitv2_track(cfg, settings=None, training=True):
         neck = nn.Identity()
 
     if cfg.MODEL.NECK.TYPE == "BN_PWXCORR":
-        feature_fusor = build_feature_fusor(cfg=cfg, in_features = backbone.model_conf_dict['layer4']['out'],
+        try:
+            in_features = backbone.model_conf_dict['layer4']['out']
+        except:
+            in_features = hidden_dim
+        feature_fusor = build_feature_fusor(cfg=cfg, in_features = in_features,
                                                xcorr_out_features=cfg.MODEL.NECK.NUM_CHANNS_POST_XCORR)
     elif cfg.MODEL.NECK.TYPE == "BN_SSAT" or cfg.MODEL.NECK.TYPE == "BN_HSSAT":
         feature_fusor = build_feature_fusor(cfg=cfg, in_features = backbone.model_conf_dict['layer4']['out'],
@@ -165,7 +210,9 @@ def build_mobilevitv2_track(cfg, settings=None, training=True):
     #     checkpoint = torch.load(ckpath, map_location="cpu")
     #     missing_keys, unexpected_keys = model.load_state_dict(checkpoint["net"], strict=False)
     #     print("Checkpoint loaded from:", ckpath)
-
+    # from tracking.myutils import to_file
+    # to_file(str(model),"modelprint.txt")
+    
     return model
 
 

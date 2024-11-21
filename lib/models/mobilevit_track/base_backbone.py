@@ -62,7 +62,6 @@ class BaseEncoder(nn.Module):
         x = self._forward_conv_layer(self.conv_1, x)
         if self.training_it:
             z = self._forward_conv_layer(self.conv_1, z)
-
         # layer_1 (i.e., MobileNetV2 block) output
         x = self._forward_conv_layer(self.layer_1, x)
         if self.training_it:
@@ -72,13 +71,13 @@ class BaseEncoder(nn.Module):
         x = self._forward_conv_layer(self.layer_2, x)
         if self.training_it:
             z = self._forward_conv_layer(self.layer_2, z)
-
+        
         # layer_3 (i.e., MobileNetV2 with down-sampling + 2 x Separable Mixed Attention block) output
         x, z = self._forward_MobileViT_layer(self.layer_3, x, z)
-
+        
         # layer_4 (i.e., MobileNetV2 with down-sampling + 4 x Separable Mixed Attention block) output
         x, z = self._forward_MobileViT_layer(self.layer_4, x, z)
-
+        
         return x, z
 
     def forward(self, x: Tensor, z: Tensor):
@@ -96,6 +95,7 @@ class BaseEncoder(nn.Module):
         x, z = self.forward_features(x, z,)
 
         return x, z
+    
 
     @staticmethod
     def _profile_layers(

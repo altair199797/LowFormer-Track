@@ -109,6 +109,7 @@ class LowFormerTrackActor(BaseActor):
             # print( temp_indices,  gt_bbox, gt_map.shape, pred_dict["grid_map"].shape)
             # print(pred_dict["grid_map"])
             # print("IAM HERE")
+            assert False, "target should not be one hot vector, but can be!"
             location_loss = loss_fn(pred_dict["grid_map"],gt_map) * 0.1
         
         

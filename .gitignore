@@ -2,7 +2,6 @@ lib/test/evaluation/local.py
 lib/train/admin/local.py
 *.pt
 output/
-*.pyc
 tensorboard/
 *.onnx
 *.pyc
