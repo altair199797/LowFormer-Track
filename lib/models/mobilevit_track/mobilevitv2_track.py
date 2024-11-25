@@ -43,9 +43,9 @@ class MobileViTv2_Track(nn.Module):
         if self.aux_loss:
             self.box_head = _get_clones(self.box_head, 6)
 
-    def forward(self, template: torch.Tensor, search: torch.Tensor):
+    def forward(self, template: torch.Tensor, search: torch.Tensor, template_anno=None):
         # print("sizes:",search.shape, template.shape)
-        x, z = self.backbone(x=search, z=template)
+        x, z = self.backbone(x=search, z=template, template_anno=template_anno)
 
         # print("after bb:", x.shape, z.shape)
         # Forward neck
@@ -98,7 +98,7 @@ class MobileViTv2_Track(nn.Module):
 
 class LowFormerWrapper(nn.Module):
 
-    def __init__(self, backbone, training):
+    def __init__(self, backbone, training, type_emb=False):
         super().__init__()
         self.backbone = backbone
         self.training_it = training
@@ -106,9 +106,17 @@ class LowFormerWrapper(nn.Module):
         self.conv_1 = self.backbone.input_stem
         self.layer_1 = self.backbone.stages[0]
         self.layer_2 = self.backbone.stages[1]
+        
+        self.type_emb = type_emb
 
-    def forward(self, x, z):
+        if self.type_emb:
+            self.token_type_embed = nn.Parameter(torch.empty(3, 80))
+            # torch.nn.init.normal_(self.token_type_embed, std=0.02)
+            torch.nn.init.trunc_normal_(self.token_type_embed, std=0.02, a=-2.0, b=2.0)
+
+    def forward(self, x, z, template_anno=None):
         # 224 -> 112
+        orig_inp_size = int(x.shape[2]//2)
         x = self.backbone.input_stem(x)
         if self.training_it:
             # 112 -> 56
@@ -116,6 +124,28 @@ class LowFormerWrapper(nn.Module):
 
         for ind, stage in enumerate(self.backbone.stages):
             if ind == len(self.backbone.stages)-1:
+                if not template_anno is None and self.type_emb: # template anno in template space, [1,128,4]
+                    x = x + self.token_type_embed[0,:].reshape(1,z.shape[1],1,1)
+                    type_mask = torch.zeros(z.shape[0],1,z.shape[2], z.shape[3]) # [128,1, 14, 14]
+                    for i in range(x.shape[0]):
+                        xcord, ycord, w, h = int(template_anno[0,i,0]*orig_inp_size/8), int(template_anno[0,i,1]*orig_inp_size/8), int(template_anno[0,i,2]*orig_inp_size/8), int(template_anno[0,i,3]*orig_inp_size/8)
+                        xcord, ycord = max(0,xcord), max(ycord,0) 
+                        w, h = min(xcord+w,14) - xcord, min(ycord+h,14) - ycord
+                        temp = torch.full([h,w],1)
+                        # print("h:",h,"w:",w,"x:",xcord,"y:",ycord, template_anno[0,i,:])
+                        type_mask[i,:,ycord:ycord+h,xcord:xcord+w] = temp
+                    type_mask = type_mask.cuda()
+                    z = z + type_mask * self.token_type_embed[1,:].reshape(1,z.shape[1],1,1) + (1 - type_mask) * self.token_type_embed[2,:].reshape(1,z.shape[1],1,1)
+                elif self.type_emb:
+                    type_mask = torch.zeros(z.shape[0],1,z.shape[2], z.shape[3])
+                    h,w = z.shape[2], z.shape[3]
+                    type_mask[:,:,int(h*0.25):int(h*0.75), int(w*0.25):int(w*0.75)] = 1
+
+                    x = x + self.token_type_embed[0,:].reshape(1,z.shape[1],1,1)
+                    z = z + type_mask * self.token_type_embed[1,:].reshape(1,z.shape[1],1,1) + (1 - type_mask) * self.token_type_embed[2,:].reshape(1,z.shape[1],1,1)
+                    
+                    
+
                 merged = torch.cat([x,torch.cat([z,z.clone()],dim=3)], dim=2)
                 merged = stage(merged)
                 x, z = merged[:,:,:z.shape[2],:], merged[:,:,z.shape[2]:,:int(z.shape[3]//2)]
@@ -152,7 +182,7 @@ def build_mobilevitv2_track(cfg, settings=None, training=True):
         from lib.models.mobilevit_track.lowformer_track import build_lowformer_backbone
         backbone = build_lowformer_backbone(cfg.MODEL.BACKBONE.TYPE.replace("lowformer_",""), cfg)
         hidden_dim = cfg.MODEL.HEAD.NUM_CHANNELS
-        backbone = LowFormerWrapper(backbone, training=training)
+        backbone = LowFormerWrapper(backbone, training=training, type_emb=cfg.MODEL.TYPE_EMB)
     else:
         raise NotImplementedError
 

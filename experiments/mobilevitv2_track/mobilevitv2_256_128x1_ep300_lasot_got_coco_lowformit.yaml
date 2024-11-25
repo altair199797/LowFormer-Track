@@ -22,13 +22,13 @@ DATA:
   TRAIN:
     DATASETS_NAME:
       - LASOT
-      # - GOT10K_train_full
-      # - COCO17
+      - GOT10K_train_full
+      - COCO17
       # - TRACKINGNET
     DATASETS_RATIO:
       - 1
-      # - 1
-      # - 1
+      - 1
+      - 1
       # - 1
     SAMPLE_PER_EPOCH: 60000
   VAL:
