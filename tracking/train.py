@@ -68,3 +68,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# CUDA_VISIBLE_DEVICES=6,7 python tracking/train.py --script mobilevitv2_track --config mobilevitv2_256_128x1_ep300_lowformit --save_dir ./output --mode multiple --nproc_per_node 2
