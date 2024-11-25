@@ -22,13 +22,13 @@ DATA:
   TRAIN:
     DATASETS_NAME:
       - LASOT
-      # - GOT10K_train_full
-      # - COCO17
+      - GOT10K_train_full
+      - COCO17
       # - TRACKINGNET
     DATASETS_RATIO:
       - 1
-      # - 1
-      # - 1
+      - 1
+      - 1
       # - 1
     SAMPLE_PER_EPOCH: 60000
   VAL:
@@ -41,6 +41,7 @@ MODEL:
   # PRETRAIN_FILE: "mobilevitv2-1.0.pt"
   EXTRA_MERGER: False
   RETURN_INTER: False
+  TYPE_EMB: True
   BACKBONE:
     TYPE: lowformer_b15_mlpremoved
     STRIDE: 16

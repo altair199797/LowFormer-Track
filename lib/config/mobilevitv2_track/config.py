@@ -11,6 +11,7 @@ cfg.MODEL = edict()
 cfg.MODEL.PRETRAIN_FILE = "mobilevitv2-2.0.pt"
 cfg.MODEL.EXTRA_MERGER = False
 
+cfg.MODEL.TYPE_EMB = False
 cfg.MODEL.RETURN_INTER = False
 cfg.MODEL.RETURN_STAGES = []
 

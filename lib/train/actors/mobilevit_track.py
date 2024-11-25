@@ -50,11 +50,15 @@ class MobileViTTrackActor(BaseActor):
         search_img = data['search_images'][0].view(-1, *data['search_images'].shape[2:])  # (batch, 3, 320, 320)
         # search_att = data['search_att'][0].view(-1, *data['search_att'].shape[2:])  # (batch, 320, 320)
 
+        # print("keys data:",data.keys(), data["template_masks"][0].shape) # shape 128x112x112
+        # # print(data["template_masks"][0][0,:].abs().sum(),"==" ,data["template_masks"][0][0,:].sum(), data["template_masks"][0][1,:].abs().sum(), 112*112)
+        # print(data["template_anno"].shape ) # [1,128,4]
+
         if len(template_list) == 1:
             template_list = template_list[0]
 
         out_dict = self.net(template=template_list,
-                            search=search_img)
+                            search=search_img, template_anno=data["template_anno"])
 
         return out_dict
 
