@@ -64,16 +64,18 @@ class Got10k(BaseVideoDataset):
         elif seq_ids is None:
             seq_ids = list(range(0, len(self.sequence_list)))
 
+        # print("seqids:", seq_ids[:20])
         self.sequence_list = [self.sequence_list[i] for i in seq_ids]
-
+        # print("seqlist:",self.sequence_list[:20])
+        # print("root:",self.root)
         if data_fraction is not None:
             self.sequence_list = random.sample(self.sequence_list, int(len(self.sequence_list)*data_fraction))
 
         self.sequence_meta_info = self._load_meta_info()
         self.seq_per_class = self._build_seq_per_class()
-        
-        # print(self.seq_per_class, self.seq_per_class.keys())
-        
+        # print("meta info:", [self.sequence_meta_info[list(self.sequence_meta_info.keys())[i]] for i in range(10)])
+        # print("seq per class:",self.seq_per_class, self.seq_per_class.keys())
+        # print("class list:",self.class_list)
         self.class_list = list(self.seq_per_class.keys())
         self.class_list.sort()
 
@@ -99,12 +101,13 @@ class Got10k(BaseVideoDataset):
                                        'major_class': meta_info[7].split(': ')[-1][:-1],
                                        'root_class': meta_info[8].split(': ')[-1][:-1],
                                        'motion_adverb': meta_info[9].split(': ')[-1][:-1]})
-        except:
+        except Exception as e:
             object_meta = OrderedDict({'object_class_name': None,
                                        'motion_class': None,
                                        'major_class': None,
                                        'root_class': None,
                                        'motion_adverb': None})
+            print(e)
         return object_meta
 
     def _build_seq_per_class(self):
