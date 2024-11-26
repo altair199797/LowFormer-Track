@@ -137,7 +137,7 @@ class LowFormerWrapper(nn.Module):
                     type_mask = type_mask.cuda()
                     z = z + type_mask * self.token_type_embed[1,:].reshape(1,z.shape[1],1,1) + (1 - type_mask) * self.token_type_embed[2,:].reshape(1,z.shape[1],1,1)
                 elif self.type_emb:
-                    type_mask = torch.zeros(z.shape[0],1,z.shape[2], z.shape[3])
+                    type_mask = torch.zeros(z.shape[0],1,z.shape[2], z.shape[3]).cuda()
                     h,w = z.shape[2], z.shape[3]
                     type_mask[:,:,int(h*0.25):int(h*0.75), int(w*0.25):int(w*0.75)] = 1
 
