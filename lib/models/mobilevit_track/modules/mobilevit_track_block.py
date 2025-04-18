@@ -41,7 +41,6 @@ class MobileViTv2_Track_Block(MobileViTBlockv2):
 
         # convert feature map to patches
         if self.enable_coreml_compatible_fn:
-            assert False
             patches_x, output_size_x = self.unfolding_coreml(fm_x)
             patches_z, output_size_z = self.unfolding_coreml(fm_z)
         else:

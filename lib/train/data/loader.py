@@ -2,14 +2,19 @@ import torch
 import torch.utils.data.dataloader
 import importlib
 import collections
-from torch._six import string_classes
+try:
+    from torch._six import string_classes
+except:
+    print("could not load torchsix!")
 from lib.utils import TensorDict, TensorList
 
 if float(torch.__version__[:3]) >= 1.9 or len('.'.join((torch.__version__).split('.')[0:2])) > 3:
     int_classes = int
 else:
-    from torch._six import int_classes
-
+    try:
+        from torch._six import int_classes
+    except:
+        print("could not load torch._six!")
 
 def _check_use_shared_memory():
     if hasattr(torch.utils.data.dataloader, '_use_shared_memory'):
@@ -187,7 +192,7 @@ class LTRLoader(torch.utils.data.dataloader.DataLoader):
 
         super(LTRLoader, self).__init__(dataset, batch_size, shuffle, sampler, batch_sampler,
                  num_workers, collate_fn, pin_memory, drop_last,
-                 timeout, worker_init_fn, prefetch_factor=2)
+                 timeout, worker_init_fn, prefetch_factor=1)
 
         self.name = name
         self.training = training

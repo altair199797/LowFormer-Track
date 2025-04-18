@@ -99,7 +99,6 @@ class LowFormerBackbone(nn.Module):
                 grouping=grouping,
                 norm=norm,
                 act_func=act_func,
-                bb_smbconv=self.bb_smbconv == "all",
                 just_unfused=just_unfused,
                 self=self,
                 fusedgroup=fusedgroup,
@@ -280,9 +279,11 @@ class LowFormerBackbone(nn.Module):
         self.ret_stages = n
 
     def cut_stages(self):
+        self.left_stages = self.stages[self.max_stage_id:]
         self.stages = self.stages[:self.max_stage_id]
+        
     
-    def forward(self, x: torch.Tensor) -> Dict[int, torch.Tensor]:
+    def forward(self, x: torch.Tensor, multi_scale=False) -> Dict[int, torch.Tensor]:
         # if x.shape[0] > 5:
         #     if not os.path.exists("dump_data"):
         #         os.makedirs("dump_data")
@@ -301,16 +302,18 @@ class LowFormerBackbone(nn.Module):
             output_dict = {}#{"input": x}
             output_dict["stage0"] = x = self.input_stem(x)
             temp = 0
+            if reduced_stages>0:
+                self.stages = self.stages[:-reduced_stages]
             for stage_id, stage in enumerate(self.stages, start=1):
-                if stage_id > self.max_stage_id:
-                    break
+                # if stage_id > self.max_stage_id:
+                #     break
                 output_dict["stage%d" % stage_id] = x = stage(x)
                 temp = stage_id
             # output_dict["stage_final"] = self.stages[-1](x)
             output_dict["stage_final"] = output_dict.pop("stage%d" % temp)
             return output_dict["stage_final"]
         else:
-            if self.ret_stages == 1:
+            if self.ret_stages == 1 and not multi_scale:
                 x = self.input_stem(x)
                 for stage_id, stage in enumerate(self.stages, start=1):
                     x = stage(x)
@@ -327,6 +330,7 @@ class LowFormerBackbone(nn.Module):
                     # if stage_id >= len(self.stages) - (self.ret_stages-1):
                     #     out_dict[int(stage_id)] = x
                 
+                return outputs
                 ret_dict =  {(ind+len(self.stages) - (self.ret_stages - 1)):i for ind, i in enumerate(outputs[len(self.stages) - (self.ret_stages - 1):]) }
                 # print(self.ret_stages, len(self.stages))
                 # print({key:(value.shape if not value is None else None) for key,value in ret_dict.items()})

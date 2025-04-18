@@ -43,10 +43,11 @@ if len(args.config):
 trackers.extend(trackerlist(name=args.track_arch+'_track', parameter_name=chosen_model, dataset_name=args.dataset, run_ids=args.runid))
 trackers[0].results_dir =  os.path.join(trackers[0].results_dir,args.dataset.replace("_test","").lower())
 
-dataset = get_dataset(args.dataset)
+dataset = get_dataset(args.dataset+("_val" if args.dataset.lower()=="got10k" else ""))
 #dataset = get_dataset('egotracks_val')
 # plot_results(trackers, dataset, 'OTB2015', merge_results=True, plot_types=('success', 'norm_prec'),
 #              skip_missing_seq=False, force_evaluation=True, plot_bin_gap=0.05)
 print_results(trackers, dataset, args.dataset, merge_results=True, plot_types=('success',"prec"), force_evaluation=True)
 
     
+# python tracking/analysis_results.py --dataset lasot --config mobilevitv2_256_128x1_ep300_lasot_got_coco_lowformit_typembv2

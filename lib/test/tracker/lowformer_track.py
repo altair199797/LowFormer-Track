@@ -55,7 +55,7 @@ class MobileViTv2Track(BaseTracker):
             self.device = 'cuda'
         self.network = network.to(self.device)
         self.network.eval()
-        self.preprocessor = Preprocessor()
+        self.preprocessor = Preprocessor(params.cfg)
         self.state = None
 
         self.feat_sz = self.cfg.TEST.SEARCH_SIZE // self.cfg.MODEL.BACKBONE.STRIDE

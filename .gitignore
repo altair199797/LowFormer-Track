@@ -5,3 +5,5 @@ output/
 tensorboard/
 *.onnx
 *.pyc
+*.pth
+*.tar

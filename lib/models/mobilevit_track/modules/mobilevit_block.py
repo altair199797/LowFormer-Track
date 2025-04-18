@@ -457,7 +457,7 @@ class MobileViTBlockv2(BaseModule):
         self.enable_coreml_compatible_fn = getattr(
             opts, "common.enable_coreml_compatible_module", False
         )
-        # self.enable_coreml_compatible_fn = True
+        self.enable_coreml_compatible_fn = True
 
         if self.enable_coreml_compatible_fn:
             # we set persistent to false so that these weights are not part of model's state_dict

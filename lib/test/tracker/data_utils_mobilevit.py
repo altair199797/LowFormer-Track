@@ -4,9 +4,10 @@ from lib.utils.misc import NestedTensor
 
 
 class Preprocessor(object):
-    def __init__(self):
-        self.mean = torch.tensor([0.0, 0.0, 0.0]).view((1, 3, 1, 1)).cuda()
-        self.std = torch.tensor([1.0, 1.0, 1.0]).view((1, 3, 1, 1)).cuda()
+    def __init__(self, cfg=None):
+        # print(cfg.DATA.MEAN,cfg.DATA.STD)
+        self.mean = torch.tensor(cfg.DATA.MEAN).view((1, 3, 1, 1)).cuda()
+        self.std = torch.tensor(cfg.DATA.STD).view((1, 3, 1, 1)).cuda()
 
     def process(self, img_arr: np.ndarray, amask_arr: np.ndarray):
         # Deal with the image patch

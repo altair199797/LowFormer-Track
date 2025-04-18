@@ -31,12 +31,22 @@ class NFSDataset(BaseDataset):
         if 'initOmit' in sequence_info:
             init_omit = sequence_info['initOmit']
 
-        frames = ['{base_path}/{sequence_path}/{frame:0{nz}}.{ext}'.format(base_path=self.base_path, 
+        frames = ['{base_path}/{sequence_path}/30/{sequence_path}/{frame:0{nz}}.{ext}'.format(base_path=self.base_path, 
         sequence_path=sequence_path, frame=frame_num, nz=nz, ext=ext) for frame_num in range(start_frame+init_omit, end_frame+1)]
 
-        anno_path = '{}/{}'.format(self.base_path, sequence_info['anno_path'])
+        
+        anno_path = '{}/{}/30/{}'.format(self.base_path,sequence_info['name'], sequence_info['name']+".txt")
 
-        ground_truth_rect = load_text(str(anno_path), delimiter=' ', dtype=np.float64)
+        ground_truth_rect = load_text(str(anno_path), delimiter=' ', dtype=np.float64, usecols=(0,1,2,3,4,5,6,7,8))[:,1:5]
+        ground_truth_rect[:,2] = ground_truth_rect[:,2] - ground_truth_rect[:,0]
+        ground_truth_rect[:,3] = ground_truth_rect[:,3] - ground_truth_rect[:,1]
+        ground_truth_rect = ground_truth_rect[::8,:]
+        
+        ground_truth_rect = ground_truth_rect[start_frame-1:end_frame]
+        
+        # assert False, ground_truth_rect
+        # print(len(frames), ground_truth_rect.shape)
+        # assert False
 
         return Sequence(sequence_info['name'], frames, 'nfs', ground_truth_rect[init_omit:,:],
                         object_class=sequence_info['object_class'])
@@ -149,3 +159,5 @@ class NFSDataset(BaseDataset):
         ]
 
         return sequence_info_list
+    
+# 369

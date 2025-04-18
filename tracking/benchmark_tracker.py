@@ -17,14 +17,17 @@ def setup_onnx_gpu(model_path, inp, out):
     sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     sess_options.intra_op_num_threads=psutil.cpu_count(logical=True)
     
-    session = ort.InferenceSession(model_path, sess_options, providers=[("CUDAExecutionProvider", {"enable_cuda_graph": True})], verbose=True)
+    session = ort.InferenceSession(model_path, sess_options, providers=[("CUDAExecutionProvider", {"enable_cuda_graph": True})], verbose=True) # ,"CPUExecutionProvider"
     ro = ort.RunOptions()
     ro.add_run_config_entry("gpu_graph_id", "1")
     io_binding = session.io_binding()
-
+    # print(inp)
+    # print(out)
     x_ortvalue = ort.OrtValue.ortvalue_from_numpy(inp, 'cuda', 0)
-    y_ortvalue = ort.OrtValue.ortvalue_from_numpy(out, 'cuda', 0)
-    io_binding.bind_ortvalue_output('output', y_ortvalue)
+    
+    y_ortvalue = ort.OrtValue.ortvalue_from_numpy(np.zeros((1,1,4), dtype=np.float32), 'cuda', 0)
+    io_binding.bind_ortvalue_output('pred_boxes', y_ortvalue)
+    
     io_binding.bind_ortvalue_input('input', x_ortvalue)
     
     return io_binding, ro, y_ortvalue, session
@@ -35,20 +38,26 @@ def setup_onnx_gpu(model_path, inp, out):
 def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=False,  args=None):
     # device = "cpu" if cpu else "cuda:0"
     inp = torch.randn(batch_size, 3, image_sizes[0], image_sizes[1]).cuda()
+    model.eval()
     # Transform Model
     if args.optit:
         model.eval()
         model = torch.jit.script(model)#, example_inputs=[inp])    
         model = torch.jit.optimize_for_inference(model)
     if args.onnx:
-        model_path = os.path.join("tracking","onnx_models","temp"+".onnx")
-        out_dict = {'pred_boxes': torch.Size([2, 1, 4]), 'score_map': torch.Size([2, 1, 16, 16]), 'size_map': torch.Size([2, 2, 16, 16]), 'offset_map': torch.Size([2, 2, 16, 16]), 'max_score': torch.Size([2, 1])}#, 'grid_map': None}
+        model_path = os.path.join("tracking","onnx_models",args.config+".onnx")
+        # model_path = os.path.join("tracking","onnx_models","temp"+".onnx")
+        downsize = int(image_sizes[-1]/16)
+        # {'pred_boxes': torch.Size([1, 1, 4]), 'score_map': torch.Size([1, 1, 14, 14]), 'size_map': torch.Size([1, 2, 14, 14]), 'offset_map': torch.Size([1, 2, 14, 14])}  
+        out_dict = {'pred_boxes': torch.Size([1, 1, 4]), 'score_map': torch.Size([1, 1, downsize, downsize]), 'size_map': torch.Size([1, 2, downsize, downsize]), 'offset_map': torch.Size([1, 2, downsize, downsize])}#, 'grid_map': None}
             
         if not os.path.exists(model_path):
             out_names = list(out_dict.keys())
             dyn_axes = {name:{0:"batch_size"} for name in out_names}
             dyn_axes["input"] =  {0: "batch_size"}
-            torch.onnx.export(model, inp, model_path, do_constant_folding=True,opset_version=16, input_names=["input"], output_names=out_names, dynamic_axes=dyn_axes)
+            os.makedirs(os.path.join("tracking","onnx_models"), exist_ok=True)
+            torch.onnx.export(model, inp.detach(), model_path, do_constant_folding=True, opset_version=13, input_names=["input"], output_names=out_names, dynamic_axes=dyn_axes)
+            
             onnx_model =  onnx.load(model_path)
             onnx.checker.check_model(onnx_model)
         if True:
@@ -57,7 +66,7 @@ def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=
             onnx_model, success = simplify_func(onnx_model)
             assert success 
             onnx.save(onnx_model, model_path)
-    
+        
     
     ## Run
     timings = []
@@ -86,7 +95,7 @@ def testrun_it(model, image_sizes=(384,256), iterations=4000, batch_size=1, cpu=
                 session.run_with_iobinding(io_binding, ro)
                 timings.append(time.time() - start_time)
                 ort_outs = y_ortvalue.numpy()
-                print(ort_outs.shape)    
+                print(ort_outs)    
     else:
         with torch.inference_mode():
             model.eval()
@@ -146,11 +155,19 @@ class TrackerWrapper(torch.nn.Module):
 
         # layer_2 (i.e., MobileNetV2 with down-sampling + 2 x MobileNetV2) output
         z = self.net.backbone.layer_2.forward(z)
-        self.z = z
+        self.z = z.detach()
         
         if self.nobb:
             x = torch.randn(1,3,base_size*2,base_size*2).cuda()
             self.x, self.z = self.net.backbone(x=x, z=self.z)
+        
+        if not "lowformit" in args.config:
+            net.box_head.enable_coreml_compatible_fn = True
+            net.box_head.register_buffer(
+                name="unfolding_weights",
+                tensor=net.box_head._compute_unfolding_weights().cuda(),
+                persistent=False,
+            )
         
     def forward(self, x):
         search_ind = int((x.shape[2]/3)*2)
@@ -160,9 +177,13 @@ class TrackerWrapper(torch.nn.Module):
             feat_fused = self.net.feature_fusor(z,x)
             out = self.net.forward_head(feat_fused, None)
             return out
-            
-        return self.net(search=x[:,:,:search_ind,:], template=self.z)
-
+        # print(x[:,:,:search_ind,:].shape, self.z.shape)
+        out = self.net(search=x[:,:,:search_ind,:], template=self.z)
+        
+        # {'pred_boxes': torch.Size([1, 1, 4]), 'score_map': torch.Size([1, 1, 14, 14]), 'size_map': torch.Size([1, 2, 14, 14]), 'offset_map': torch.Size([1, 2, 14, 14])}  
+        # print({key:out[key].shape for key in out})
+        return out
+      
 
 def show_params_flops(model, tmpsize, searsize):
     from ptflops import get_model_complexity_info

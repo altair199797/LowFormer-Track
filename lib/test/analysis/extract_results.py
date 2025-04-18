@@ -137,7 +137,14 @@ def extract_results(trackers, dataset, report_name, skip_missing_seq=False, plot
             results_path = '{}.txt'.format(base_results_path)
             if os.path.isfile(results_path):
                 pred_bb = torch.tensor(load_text(str(results_path), delimiter=('\t', ','), dtype=np.float64))
+                # print(seq_id)
+                # print(pred_bb.shape, anno_bb.shape)
+                # print(anno_bb[-3:,:], pred_bb[-3:,:])
+                # assert False, pred_bb.shape
+                # pred_bb[:,2] = pred_bb[:,2] + pred_bb[:,0]
+                # pred_bb[:,3] = pred_bb[:,3] + pred_bb[:,1]
             else:
+                # assert False
                 if skip_missing_seq:
                     valid_sequence[seq_id] = 0
                     break

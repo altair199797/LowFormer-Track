@@ -124,6 +124,7 @@ class Tracker:
                 if key in tracker_out or val is not None:
                     output[key].append(val)
 
+        print(seq.frames[0])
         # Initialize
         image = self._read_image(seq.frames[0])
 

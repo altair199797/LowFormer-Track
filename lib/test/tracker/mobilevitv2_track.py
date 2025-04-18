@@ -52,7 +52,7 @@ class MobileViTv2Track(BaseTracker):
             self.device = 'cuda'
         self.network = network.to(self.device)
         self.network.eval()
-        self.preprocessor = Preprocessor()
+        self.preprocessor = Preprocessor(params.cfg)
         self.state = None
 
         self.feat_sz = self.cfg.TEST.SEARCH_SIZE // self.cfg.MODEL.BACKBONE.STRIDE
@@ -91,14 +91,17 @@ class MobileViTv2Track(BaseTracker):
 
         # pre-compute the template features corresponding to first three of the tracker model (for speed-up)
         with torch.no_grad():
-            # conv_1 (i.e., the first conv3x3 layer) output for
-            z = self.network.backbone.conv_1.forward(template.tensors.to(self.device))
+            if self.cfg.MODEL.BACKBONE.EFFTRACK:
+                z = self.network.backbone.forward_template(template.tensors.to(self.device))
+            else:
+                # conv_1 (i.e., the first conv3x3 layer) output for
+                z = self.network.backbone.conv_1.forward(template.tensors.to(self.device))
 
-            # layer_1 (i.e., MobileNetV2 block) output
-            z = self.network.backbone.layer_1.forward(z)
+                # layer_1 (i.e., MobileNetV2 block) output
+                z = self.network.backbone.layer_1.forward(z)
 
-            # layer_2 (i.e., MobileNetV2 with down-sampling + 2 x MobileNetV2) output
-            z = self.network.backbone.layer_2.forward(z)
+                # layer_2 (i.e., MobileNetV2 with down-sampling + 2 x MobileNetV2) output
+                z = self.network.backbone.layer_2.forward(z)
 
             self.z_dict1 = z
             # print("z:",z, template.tensors.shape)
@@ -127,17 +130,21 @@ class MobileViTv2Track(BaseTracker):
             out_dict = self.network.forward(
                 template=self.z_dict1.to(self.device), search=x_dict.tensors.to(self.device))
 
-        pred_score_map = out_dict['score_map']
+        if self.cfg.MODEL.BACKBONE.EFFTRACK:
+            pred_boxes= out_dict["pred_boxes"].view(-1,4)
+        else:
+            pred_score_map = out_dict['score_map']
 
-        # add hann windows
-        response = self.output_window * pred_score_map
-        # response = pred_score_map
-        pred_boxes = self.network.box_head.cal_bbox(response, out_dict['size_map'], out_dict['offset_map'])
-        pred_boxes = pred_boxes.view(-1, 4)
-        # Baseline: Take the mean of all pred boxes as the final result
+            # add hann windows
+            response = self.output_window * pred_score_map
+            # response = pred_score_map
+            pred_boxes = self.network.box_head.cal_bbox(response, out_dict['size_map'], out_dict['offset_map'])
+            pred_boxes = pred_boxes.view(-1, 4)
+            # Baseline: Take the mean of all pred boxes as the final result
+        
         pred_box = (pred_boxes.mean(dim=0) * self.params.search_size / resize_factor).tolist()  # (cx, cy, w, h) [0,1]
         best_bbox = self.map_box_back(pred_box, resize_factor)
-
+        
         # get the final box result
         self.state = clip_box(best_bbox, H, W, margin=10)
 

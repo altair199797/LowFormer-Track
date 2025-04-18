@@ -17,11 +17,11 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
     if not os.path.exists(tracker.results_dir):
         print("create tracking result dir:", tracker.results_dir)
         os.makedirs(tracker.results_dir)
-    if seq.dataset in ['trackingnet', 'got10k', 'nfs', 'lasot', "otb"]:
+    if seq.dataset in ['trackingnet', 'got10k', 'nfs', 'lasot', "otb","avist","trek150","uav"]:
         if not os.path.exists(os.path.join(tracker.results_dir, seq.dataset)):
             os.makedirs(os.path.join(tracker.results_dir, seq.dataset))
     '''2021.1.5 create new folder for these two datasets'''
-    if seq.dataset in ['trackingnet', 'got10k', 'nfs', 'lasot', "otb"]:
+    if seq.dataset in ['trackingnet', 'got10k', 'nfs', 'lasot', "otb","avist","trek150","uav"]:
         base_results_path = os.path.join(tracker.results_dir, seq.dataset, seq.name)
     else:
         base_results_path = os.path.join(tracker.results_dir, seq.name)
@@ -102,7 +102,7 @@ def _save_tracker_output(seq: Sequence, tracker: Tracker, output: dict):
                 save_time(timings_file, data)
 
 
-def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8, force_eval=False):
+def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8, force_eval=False, index=-1, total_len=-1):
     """Runs a tracker on a sequence."""
     '''2021.1.2 Add multiple gpu support'''
     try:
@@ -115,11 +115,13 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8, force_
 
     def _results_exist():
         if seq.object_ids is None:
-            if seq.dataset in ['trackingnet', 'got10k', 'nfs', 'lasot',"otb"]:
+            if seq.dataset in ['trackingnet', 'got10k', 'nfs', 'lasot',"otb", "avist","trek150","uav"]:
                 base_results_path = os.path.join(tracker.results_dir, seq.dataset, seq.name)
                 bbox_file = '{}.txt'.format(base_results_path)
+                # print(base_results_path)
             else:
                 bbox_file = '{}/{}.txt'.format(tracker.results_dir, seq.name)
+                # print(bbox_file)
             return os.path.isfile(bbox_file)
         else:
             bbox_files = ['{}/{}_{}.txt'.format(tracker.results_dir, seq.name, obj_id) for obj_id in seq.object_ids]
@@ -154,7 +156,7 @@ def run_sequence(seq: Sequence, tracker: Tracker, debug=False, num_gpu=8, force_
         num_frames = len(output['time'])
 
     print('FPS: {}'.format(num_frames / exec_time))
-
+    print("DONE:", index, "/", total_len)
     if not debug:
         _save_tracker_output(seq, tracker, output)
 
@@ -184,7 +186,8 @@ def run_dataset(dataset, trackers, debug=False, threads=0, num_gpus=8, force_eva
             for tracker_info in trackers:
                 run_sequence(seq, tracker_info, debug=debug, force_eval=force_eval)
     elif mode == 'parallel':
-        param_list = [(seq, tracker_info, debug, num_gpus, force_eval) for seq, tracker_info in product(dataset, trackers)]
+        total_len = len(dataset)
+        param_list = [(seq, tracker_info, debug, num_gpus, force_eval, index, total_len) for index, (seq, tracker_info) in enumerate(product(dataset, trackers))]
         with multiprocessing.Pool(processes=threads) as pool:
             pool.starmap(run_sequence, param_list)
     print('Done, total time: {}'.format(str(timedelta(seconds=(time.time() - dataset_start_time)))))

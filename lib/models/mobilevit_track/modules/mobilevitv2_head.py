@@ -246,10 +246,10 @@ class LowFormerHeadModule(BaseModule):
     def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
         idx_y = idx // self.feat_sz
-        idx_x = idx % self.feat_sz
+        idx_x =  idx - (idx // self.feat_sz) * self.feat_sz
 
         idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
-        size = size_map.flatten(2).gather(dim=2, index=idx)
+        size = size_map.flatten(2).gather(dim=2, index=idx)[:,:,0]
         offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
 
         # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
@@ -257,7 +257,7 @@ class LowFormerHeadModule(BaseModule):
         # cx, cy, w, h
         bbox = torch.cat([(idx_x.to(torch.float) + offset[:, :1]) / self.feat_sz,
                           (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
-                          size.squeeze(-1)], dim=1)
+                          size], dim=1)
 
         if return_score:
             return bbox, max_score
@@ -266,10 +266,10 @@ class LowFormerHeadModule(BaseModule):
     def get_pred(self, score_map_ctr, size_map, offset_map):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
         idx_y = idx // self.feat_sz
-        idx_x = idx % self.feat_sz
+        idx_x =  idx - (idx // self.feat_sz) * self.feat_sz
 
         idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
-        size = size_map.flatten(2).gather(dim=2, index=idx)
+        size = size_map.flatten(2).gather(dim=2, index=idx)[:,:,0]
         offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
 
         # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
@@ -624,7 +624,7 @@ class SeparableSelfAttentionHeadModule(BaseModule):
 
         x_cls = self.pre_ssat_cls(x)
         x_reg = self.pre_ssat_reg(x)
-
+        
         # convert feature map to patches
         if self.enable_coreml_compatible_fn:
             x_cls_patches, x_cls_output_size = self.unfolding_coreml(x_cls)
@@ -665,18 +665,23 @@ class SeparableSelfAttentionHeadModule(BaseModule):
     def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
         idx_y = idx // self.feat_sz
-        idx_x = idx % self.feat_sz
+        idx_x =  idx - (idx // self.feat_sz) * self.feat_sz #idx % self.feat_sz
 
         idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
-        size = size_map.flatten(2).gather(dim=2, index=idx)
-        offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
+        size = size_map.flatten(2).gather(dim=2, index=idx)[:,:,0]
+        offset = offset_map.flatten(2).gather(dim=2, index=idx)[:,:,0]
+        # assert False, offset.shape
+        # offset = offset.squeeze(-1)
 
+        # print((idx_x.to(torch.float) + offset[:, :1]).shape)
+        # assert False, size.shape
+        
         # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
         #                   idx_x + size[:, 0] / 2, idx_y + size[:, 1] / 2], dim=1) / self.feat_sz
         # cx, cy, w, h
         bbox = torch.cat([(idx_x.to(torch.float) + offset[:, :1]) / self.feat_sz,
                           (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
-                          size.squeeze(-1)], dim=1)
+                          size], dim=1)
 
         if return_score:
             return bbox, max_score
@@ -688,7 +693,7 @@ class SeparableSelfAttentionHeadModule(BaseModule):
         idx_x = idx % self.feat_sz
 
         idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
-        size = size_map.flatten(2).gather(dim=2, index=idx)
+        size = size_map.flatten(2).gather(dim=2, index=idx)[:,:,0]
         offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
 
         # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
@@ -722,6 +727,7 @@ class SeparableSelfAttentionHeadModule(BaseModule):
     def profile_module(
         self, input: Tensor, *args, **kwargs
     ) -> Tuple[Tensor, float, float]:
+        assert False
         params = macs = 0.0
         input = self.resize_input_if_needed(input)
 
@@ -1078,7 +1084,7 @@ class SeparableSelfAttentionLiteHeadModule(BaseModule):
         idx_x = idx % self.feat_sz
 
         idx = idx.unsqueeze(1).expand(idx.shape[0], 2, 1)
-        size = size_map.flatten(2).gather(dim=2, index=idx)
+        size = size_map.flatten(2).gather(dim=2, index=idx)[:,:,0]
         offset = offset_map.flatten(2).gather(dim=2, index=idx).squeeze(-1)
 
         # bbox = torch.cat([idx_x - size[:, 0] / 2, idx_y - size[:, 1] / 2,
@@ -1086,7 +1092,7 @@ class SeparableSelfAttentionLiteHeadModule(BaseModule):
         # cx, cy, w, h
         bbox = torch.cat([(idx_x.to(torch.float) + offset[:, :1]) / self.feat_sz,
                           (idx_y.to(torch.float) + offset[:, 1:]) / self.feat_sz,
-                          size.squeeze(-1)], dim=1)
+                          size], dim=1)
 
         if return_score:
             return bbox, max_score

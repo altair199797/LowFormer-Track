@@ -52,12 +52,7 @@ def run(settings):
             os.makedirs(log_dir)
     settings.log_file = os.path.join(log_dir, "%s-%s.log" % (settings.script_name, settings.config_name))
 
-    # Build dataloaders
-    loader_train, loader_val = build_dataloaders(cfg, settings)
-
-    if "RepVGG" in cfg.MODEL.BACKBONE.TYPE or "swin" in cfg.MODEL.BACKBONE.TYPE or "LightTrack" in cfg.MODEL.BACKBONE.TYPE:
-        cfg.ckpt_dir = settings.save_dir
-
+    
     # Create network
     if settings.script_name == 'mobilevitv2_track':
         net = build_mobilevitv2_track(cfg, settings=settings)
@@ -65,6 +60,15 @@ def run(settings):
         net = build_lowformer_track(cfg, settings=settings)
     else:
         raise ValueError("illegal script name")
+    
+    # Build dataloaders
+    loader_train, loader_val = build_dataloaders(cfg, settings)
+
+    if "RepVGG" in cfg.MODEL.BACKBONE.TYPE or "swin" in cfg.MODEL.BACKBONE.TYPE or "LightTrack" in cfg.MODEL.BACKBONE.TYPE:
+        cfg.ckpt_dir = settings.save_dir
+
+    
+
 
     # wrap networks to distributed one
     net.cuda()

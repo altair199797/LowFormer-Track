@@ -67,5 +67,8 @@ def main():
 
 #  python tracking/test.py --tracker_name lowformer_track --tracker_param lowformer_256_128x1_ep300_lasot_coco_got_b15_lffv3_convhead --dataset LaSOT --force_eval --threads 1
 
+# python tracking/test.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300_lasot_got_coco_lowformit_typemb --dataset lasot
+# python tracking/test.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300_lasot_got_coco --dataset lasot
+
 if __name__ == '__main__':
     main()

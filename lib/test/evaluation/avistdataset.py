@@ -49,7 +49,11 @@ class AVisTDataset(BaseDataset):
 
         frames_list = ['{}/img_{:05d}.jpg'.format(frames_path, frame_number) for frame_number in range(1, ground_truth_rect.shape[0] + 1)]
 
-        return Sequence(sequence_name, frames_list, 'avist', ground_truth_rect.reshape(-1, 4), target_visible=target_visible)
+        ground_truth_rect = ground_truth_rect.reshape(-1, 4)
+        # ground_truth_rect[:,2] -= ground_truth_rect[:,0]   
+        
+        
+        return Sequence(sequence_name, frames_list, 'avist', ground_truth_rect, target_visible=target_visible)
 
     def get_attribute_names(self, mode='short'):
         if self.att_dict is None:

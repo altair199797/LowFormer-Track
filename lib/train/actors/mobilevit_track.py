@@ -57,8 +57,13 @@ class MobileViTTrackActor(BaseActor):
         if len(template_list) == 1:
             template_list = template_list[0]
 
-        out_dict = self.net(template=template_list,
+        if self.cfg.MODEL.TYPE_EMB or self.cfg.MODEL.TYPE_EMBV2:
+            out_dict = self.net(template=template_list,
                             search=search_img, template_anno=data["template_anno"])
+        else:
+            out_dict = self.net(template=template_list,
+                            search=search_img, template_anno=None)
+            
 
         return out_dict
 
@@ -79,7 +84,7 @@ class MobileViTTrackActor(BaseActor):
         # compute giou and iou
         try:
             giou_loss, iou = self.objective['giou'](pred_boxes_vec, gt_boxes_vec)  # (BN,4) (BN,4)
-        except:
+        except :
             giou_loss, iou = torch.tensor(0.0).cuda(), torch.tensor(0.0).cuda()
 
         # compute l1 loss
@@ -87,8 +92,18 @@ class MobileViTTrackActor(BaseActor):
         # compute location loss
         if 'score_map' in pred_dict:
             location_loss = self.objective['focal'](pred_dict['score_map'], gt_gaussian_maps)
+        elif "scores" in pred_dict:
+            # location_loss = torch.tensor(0.0, device=l1_loss.device)
+            # location_loss = (giou_loss.detach() - pred_dict["scores"]).mean()
+            # print("loss:",pred_dict["scores"].shape, iou.shape)
+            if len(iou.shape) == 0:
+                location_loss = torch.tensor(0.0, device=l1_loss.device)
+            else:
+                location_loss = torch.nn.functional.binary_cross_entropy_with_logits(pred_dict["scores"], iou.detach())
+       
         else:
             location_loss = torch.tensor(0.0, device=l1_loss.device)
+            
         # weighted sum
         loss = self.loss_weight['giou'] * giou_loss + self.loss_weight['l1'] * l1_loss + self.loss_weight['focal'] * location_loss
         if return_status:

@@ -2,18 +2,18 @@ import numpy as np
 import pandas as pd
 
 
-def load_text_numpy(path, delimiter, dtype):
+def load_text_numpy(path, delimiter, dtype, usecols=None):
     if isinstance(delimiter, (tuple, list)):
         for d in delimiter:
             try:
-                ground_truth_rect = np.loadtxt(path, delimiter=d, dtype=dtype)
+                ground_truth_rect = np.loadtxt(path, delimiter=d, dtype=dtype, usecols=usecols)
                 return ground_truth_rect
             except:
                 pass
 
         raise Exception('Could not read file {}'.format(path))
     else:
-        ground_truth_rect = np.loadtxt(path, delimiter=delimiter, dtype=dtype)
+        ground_truth_rect = np.loadtxt(path, delimiter=delimiter, dtype=dtype, usecols=usecols) 
         return ground_truth_rect
 
 
@@ -34,9 +34,9 @@ def load_text_pandas(path, delimiter, dtype):
         return ground_truth_rect
 
 
-def load_text(path, delimiter=' ', dtype=np.float32, backend='numpy'):
+def load_text(path, delimiter=' ', dtype=np.float32, backend='numpy', usecols=None):
     if backend == 'numpy':
-        return load_text_numpy(path, delimiter, dtype)
+        return load_text_numpy(path, delimiter, dtype, usecols=usecols)
     elif backend == 'pandas':
         return load_text_pandas(path, delimiter, dtype)
 

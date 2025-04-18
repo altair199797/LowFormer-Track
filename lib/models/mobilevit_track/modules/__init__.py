@@ -16,7 +16,7 @@ from .feature_pyramid import FeaturePyramidNetwork
 from .ssd_heads import SSDHead, SSDInstanceHead
 from .efficientnet import EfficientNetBlock
 from .swin_transformer_block import SwinTransformerBlock, PatchMerging, Permute
-
+from .lowtention import ConvAttention
 
 __all__ = [
     "InvertedResidual",
@@ -38,4 +38,5 @@ __all__ = [
     "SwinTransformerBlock",
     "PatchMerging",
     "Permute",
+    "ConvAttention",
 ]
