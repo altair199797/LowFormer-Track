@@ -55,14 +55,12 @@ To evaluate the tracker on a sample video, run
 python tracking/video_demo.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300 --videofile *path-to-video-file* --optional_box *bounding-box-annotation*
 ```
 
-## Visualization of tracker output and the attention maps
-![attn_maps](assets/attn_visualization.png)
 
 ## Acknowledgements
 * We use the Separable Self-Attention Transformer implementation and the pretrained `MobileViTv2` backbone from [ml-cvnets](https://github.com/apple/ml-cvnets). Thank you!
 * Our training code is built upon [OSTrack](https://github.com/botaoye/OSTrack) and [PyTracking](https://github.com/visionml/pytracking)
 * To generate the evaluation metrics for different datasets (except, server-based GOT-10k and TrackingNet), we use the [pysot-toolkit](https://github.com/StrangerZhang/pysot-toolkit)
-
+* Thanks to the Authors of SMAT. The citation of their paper is found below!
 ## Citation
 If our work is useful for your research, please consider citing:
 
