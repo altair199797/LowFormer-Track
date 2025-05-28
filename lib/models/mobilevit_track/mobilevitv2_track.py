@@ -100,15 +100,20 @@ class MobileViTv2_Track(nn.Module):
             return out
 
         elif "CENTER" in self.head_type:
+            max_score = 0
             # run the center head
-            score_map_ctr, bbox, size_map, offset_map = self.box_head(opt_feat, gt_score_map)
+            if self.head_type == "CENTER_SSAT_LOWFORM":
+                score_map_ctr, bbox, size_map, offset_map, max_score = self.box_head(opt_feat, gt_score_map)
+            else:
+                score_map_ctr, bbox, size_map, offset_map = self.box_head(opt_feat, gt_score_map)
             # outputs_coord = box_xyxy_to_cxcywh(bbox)
             outputs_coord = bbox
             outputs_coord_new = outputs_coord.view(bs, 1, 4)
             out = {'pred_boxes': outputs_coord_new,
                    'score_map': score_map_ctr,
                    'size_map': size_map,
-                   'offset_map': offset_map}
+                   'offset_map': offset_map,
+                   'max_score': max_score}
             return out
         else:
             raise NotImplementedError
@@ -533,7 +538,9 @@ def build_mobilevitv2_track(cfg, settings=None, training=True):
         raise NotImplementedError
 
     # backbone.finetune_track(cfg=cfg, patch_start_index=patch_start_index)
-
+    if False:
+        print("Test backbone:",backbone.backbone(torch.randn(1,3,224,224))[4].shape)
+        print(backbone.backbone)
     # build neck module to fuse template and search region features
     if cfg.MODEL.NECK:
         if cfg.MODEL.NECK.TYPE == "EFFTRACK":
@@ -578,7 +585,7 @@ def build_mobilevitv2_track(cfg, settings=None, training=True):
         box_head = build_box_head(cfg, cfg.MODEL.HEAD.NUM_CHANNELS)
 
     ## REMOVE TODO
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     
     model = MobileViTv2_Track(
         backbone=backbone,

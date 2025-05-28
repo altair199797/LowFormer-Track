@@ -1,0 +1,771 @@
+{
+  "toolkit": "0.7.3",
+  "timestamp": "2025-05-23T13:04:02.469860",
+  "trackers": {
+    "LowFormerTrack_MOT": {
+      "command": "lowform_track_integration_multiobject",
+      "label": "LFTrackMOT",
+      "protocol": "traxpython",
+      "arguments": {},
+      "env": {},
+      "paths": "/home/moritz/Research/SMAT/VOT_workspace/"
+    }
+  },
+  "sequences": {
+    "animal": {
+      "length": 100,
+      "width": 1280,
+      "height": 720
+    },
+    "ants1": {
+      "length": 325,
+      "width": 1024,
+      "height": 1024
+    },
+    "bag": {
+      "length": 311,
+      "width": 1280,
+      "height": 720
+    },
+    "basketball": {
+      "length": 725,
+      "width": 576,
+      "height": 432
+    },
+    "basketball-11": {
+      "length": 1851,
+      "width": 1280,
+      "height": 720
+    },
+    "beaker": {
+      "length": 500,
+      "width": 1280,
+      "height": 720
+    },
+    "bear-6": {
+      "length": 1671,
+      "width": 1280,
+      "height": 720
+    },
+    "bicycle": {
+      "length": 4305,
+      "width": 1280,
+      "height": 720
+    },
+    "bicycle-7": {
+      "length": 2461,
+      "width": 1280,
+      "height": 720
+    },
+    "bird-15": {
+      "length": 1575,
+      "width": 480,
+      "height": 360
+    },
+    "bird-2": {
+      "length": 4101,
+      "width": 480,
+      "height": 360
+    },
+    "birds1": {
+      "length": 339,
+      "width": 1280,
+      "height": 720
+    },
+    "boat": {
+      "length": 3991,
+      "width": 1280,
+      "height": 720
+    },
+    "bolt1": {
+      "length": 350,
+      "width": 640,
+      "height": 360
+    },
+    "book": {
+      "length": 175,
+      "width": 640,
+      "height": 480
+    },
+    "book-3": {
+      "length": 1800,
+      "width": 1280,
+      "height": 720
+    },
+    "bottle": {
+      "length": 1393,
+      "width": 1280,
+      "height": 720
+    },
+    "bubble": {
+      "length": 243,
+      "width": 960,
+      "height": 540
+    },
+    "bull": {
+      "length": 1907,
+      "width": 540,
+      "height": 360
+    },
+    "bus": {
+      "length": 8087,
+      "width": 1280,
+      "height": 720
+    },
+    "bus-2": {
+      "length": 1100,
+      "width": 1280,
+      "height": 720
+    },
+    "car": {
+      "length": 4077,
+      "width": 1280,
+      "height": 720
+    },
+    "car-9": {
+      "length": 3461,
+      "width": 1280,
+      "height": 720
+    },
+    "carchase": {
+      "length": 10699,
+      "width": 1280,
+      "height": 720
+    },
+    "cat": {
+      "length": 2409,
+      "width": 1280,
+      "height": 720
+    },
+    "cattle-13": {
+      "length": 2321,
+      "width": 1280,
+      "height": 720
+    },
+    "chameleon-20": {
+      "length": 1650,
+      "width": 1280,
+      "height": 720
+    },
+    "clownfish": {
+      "length": 392,
+      "width": 1280,
+      "height": 720
+    },
+    "colorfish": {
+      "length": 284,
+      "width": 1280,
+      "height": 720
+    },
+    "conduction1": {
+      "length": 345,
+      "width": 1280,
+      "height": 720
+    },
+    "crab-18": {
+      "length": 1832,
+      "width": 480,
+      "height": 360
+    },
+    "crab-6": {
+      "length": 1959,
+      "width": 1280,
+      "height": 720
+    },
+    "crabs1": {
+      "length": 160,
+      "width": 1280,
+      "height": 720
+    },
+    "dancingshoe": {
+      "length": 5451,
+      "width": 1280,
+      "height": 720
+    },
+    "deer": {
+      "length": 1500,
+      "width": 1280,
+      "height": 720
+    },
+    "diabolo": {
+      "length": 3621,
+      "width": 1280,
+      "height": 720
+    },
+    "diving": {
+      "length": 1765,
+      "width": 1280,
+      "height": 720
+    },
+    "dog": {
+      "length": 1829,
+      "width": 640,
+      "height": 360
+    },
+    "dog-7": {
+      "length": 1918,
+      "width": 1280,
+      "height": 720
+    },
+    "dog1": {
+      "length": 3581,
+      "width": 1280,
+      "height": 720
+    },
+    "dolphins": {
+      "length": 363,
+      "width": 853,
+      "height": 480
+    },
+    "domino_damselfish": {
+      "length": 1226,
+      "width": 1280,
+      "height": 720
+    },
+    "dragon": {
+      "length": 4474,
+      "width": 1280,
+      "height": 720
+    },
+    "drone": {
+      "length": 5211,
+      "width": 1280,
+      "height": 720
+    },
+    "drone1": {
+      "length": 355,
+      "width": 1280,
+      "height": 720
+    },
+    "drone_across": {
+      "length": 147,
+      "width": 1280,
+      "height": 720
+    },
+    "duck": {
+      "length": 3234,
+      "width": 1280,
+      "height": 720
+    },
+    "f1": {
+      "length": 3535,
+      "width": 1280,
+      "height": 720
+    },
+    "fernando": {
+      "length": 292,
+      "width": 640,
+      "height": 480
+    },
+    "fish1": {
+      "length": 366,
+      "width": 460,
+      "height": 345
+    },
+    "fish2": {
+      "length": 310,
+      "width": 640,
+      "height": 360
+    },
+    "fishnet": {
+      "length": 451,
+      "width": 1280,
+      "height": 720
+    },
+    "flag": {
+      "length": 3780,
+      "width": 1280,
+      "height": 720
+    },
+    "flag-3": {
+      "length": 1904,
+      "width": 1280,
+      "height": 720
+    },
+    "flamingo1": {
+      "length": 1377,
+      "width": 1280,
+      "height": 720
+    },
+    "flyboard": {
+      "length": 4509,
+      "width": 1280,
+      "height": 720
+    },
+    "fox": {
+      "length": 1809,
+      "width": 1280,
+      "height": 720
+    },
+    "freesbiedog": {
+      "length": 3176,
+      "width": 1280,
+      "height": 720
+    },
+    "frisbee": {
+      "length": 248,
+      "width": 1920,
+      "height": 1080
+    },
+    "gametarget-7": {
+      "length": 1616,
+      "width": 480,
+      "height": 360
+    },
+    "goldfish": {
+      "length": 4520,
+      "width": 1280,
+      "height": 720
+    },
+    "goldfish-3": {
+      "length": 2375,
+      "width": 640,
+      "height": 360
+    },
+    "gorilla-13": {
+      "length": 1605,
+      "width": 568,
+      "height": 320
+    },
+    "gymnastics1": {
+      "length": 567,
+      "width": 320,
+      "height": 180
+    },
+    "gymnastics3": {
+      "length": 118,
+      "width": 1280,
+      "height": 720
+    },
+    "hand": {
+      "length": 267,
+      "width": 320,
+      "height": 240
+    },
+    "hand-9": {
+      "length": 1733,
+      "width": 480,
+      "height": 360
+    },
+    "hand2": {
+      "length": 145,
+      "width": 960,
+      "height": 540
+    },
+    "hand3": {
+      "length": 1830,
+      "width": 1280,
+      "height": 720
+    },
+    "handball2": {
+      "length": 402,
+      "width": 768,
+      "height": 576
+    },
+    "hat-1": {
+      "length": 3486,
+      "width": 1280,
+      "height": 720
+    },
+    "hat-5": {
+      "length": 8000,
+      "width": 1280,
+      "height": 720
+    },
+    "helicopter": {
+      "length": 2964,
+      "width": 1280,
+      "height": 720
+    },
+    "houseride": {
+      "length": 3565,
+      "width": 1280,
+      "height": 720
+    },
+    "iceskater2": {
+      "length": 707,
+      "width": 640,
+      "height": 352
+    },
+    "juggling": {
+      "length": 500,
+      "width": 640,
+      "height": 480
+    },
+    "kangaroo": {
+      "length": 2842,
+      "width": 1280,
+      "height": 720
+    },
+    "kite-10": {
+      "length": 3309,
+      "width": 480,
+      "height": 360
+    },
+    "leaves": {
+      "length": 63,
+      "width": 1280,
+      "height": 720
+    },
+    "licenseplate": {
+      "length": 9198,
+      "width": 1280,
+      "height": 720
+    },
+    "lion-12": {
+      "length": 3479,
+      "width": 1280,
+      "height": 720
+    },
+    "marathon": {
+      "length": 101,
+      "width": 960,
+      "height": 540
+    },
+    "matrix": {
+      "length": 100,
+      "width": 800,
+      "height": 336
+    },
+    "monkey-3": {
+      "length": 1261,
+      "width": 640,
+      "height": 360
+    },
+    "monkey-9": {
+      "length": 4079,
+      "width": 480,
+      "height": 360
+    },
+    "moorish_idol": {
+      "length": 348,
+      "width": 1280,
+      "height": 720
+    },
+    "motorcycle": {
+      "length": 2678,
+      "width": 1280,
+      "height": 720
+    },
+    "motorcycle-1": {
+      "length": 2241,
+      "width": 1280,
+      "height": 720
+    },
+    "motorcycle-18": {
+      "length": 2557,
+      "width": 1280,
+      "height": 720
+    },
+    "nature": {
+      "length": 999,
+      "width": 960,
+      "height": 540
+    },
+    "orangefish": {
+      "length": 429,
+      "width": 1280,
+      "height": 720
+    },
+    "panda": {
+      "length": 1471,
+      "width": 1280,
+      "height": 720
+    },
+    "parkour": {
+      "length": 2433,
+      "width": 1280,
+      "height": 720
+    },
+    "person-12": {
+      "length": 1990,
+      "width": 480,
+      "height": 360
+    },
+    "person-5": {
+      "length": 2967,
+      "width": 1280,
+      "height": 720
+    },
+    "pig-2": {
+      "length": 2671,
+      "width": 1280,
+      "height": 720
+    },
+    "pool-15": {
+      "length": 1338,
+      "width": 1280,
+      "height": 720
+    },
+    "rabbit": {
+      "length": 158,
+      "width": 640,
+      "height": 480
+    },
+    "rabbit-10": {
+      "length": 2098,
+      "width": 1280,
+      "height": 720
+    },
+    "rabbits": {
+      "length": 1816,
+      "width": 1280,
+      "height": 720
+    },
+    "racing-16": {
+      "length": 2186,
+      "width": 1280,
+      "height": 720
+    },
+    "robot": {
+      "length": 2714,
+      "width": 1280,
+      "height": 720
+    },
+    "robot-1": {
+      "length": 5609,
+      "width": 640,
+      "height": 360
+    },
+    "robot-19": {
+      "length": 5797,
+      "width": 640,
+      "height": 360
+    },
+    "robot-5": {
+      "length": 2325,
+      "width": 1280,
+      "height": 720
+    },
+    "rollerman": {
+      "length": 2368,
+      "width": 1280,
+      "height": 720
+    },
+    "run": {
+      "length": 1712,
+      "width": 1280,
+      "height": 720
+    },
+    "sailing": {
+      "length": 1812,
+      "width": 1280,
+      "height": 720
+    },
+    "seagull": {
+      "length": 3511,
+      "width": 1280,
+      "height": 720
+    },
+    "seastar": {
+      "length": 451,
+      "width": 1280,
+      "height": 720
+    },
+    "sepia-13": {
+      "length": 2756,
+      "width": 1280,
+      "height": 720
+    },
+    "sepia-8": {
+      "length": 3694,
+      "width": 640,
+      "height": 360
+    },
+    "shaking": {
+      "length": 365,
+      "width": 624,
+      "height": 352
+    },
+    "shark-2": {
+      "length": 3455,
+      "width": 1280,
+      "height": 720
+    },
+    "sheep-9": {
+      "length": 1840,
+      "width": 1280,
+      "height": 720
+    },
+    "singer3": {
+      "length": 131,
+      "width": 854,
+      "height": 480
+    },
+    "sitcom": {
+      "length": 3898,
+      "width": 640,
+      "height": 360
+    },
+    "skateboard-8": {
+      "length": 4112,
+      "width": 1280,
+      "height": 720
+    },
+    "skiing": {
+      "length": 3057,
+      "width": 1280,
+      "height": 720
+    },
+    "snake": {
+      "length": 101,
+      "width": 1920,
+      "height": 1080
+    },
+    "soccer1": {
+      "length": 392,
+      "width": 640,
+      "height": 360
+    },
+    "soldier": {
+      "length": 138,
+      "width": 1280,
+      "height": 720
+    },
+    "squirrel": {
+      "length": 2715,
+      "width": 1280,
+      "height": 720
+    },
+    "stripedfish": {
+      "length": 363,
+      "width": 960,
+      "height": 540
+    },
+    "surfboard-12": {
+      "length": 3259,
+      "width": 1280,
+      "height": 720
+    },
+    "tank-16": {
+      "length": 3635,
+      "width": 1280,
+      "height": 720
+    },
+    "tank-9": {
+      "length": 1312,
+      "width": 1280,
+      "height": 720
+    },
+    "tennis": {
+      "length": 213,
+      "width": 960,
+      "height": 540
+    },
+    "tiger-4": {
+      "length": 2877,
+      "width": 1280,
+      "height": 720
+    },
+    "train-7": {
+      "length": 1425,
+      "width": 1280,
+      "height": 676
+    },
+    "transparent_fish": {
+      "length": 500,
+      "width": 960,
+      "height": 540
+    },
+    "uav1": {
+      "length": 3469,
+      "width": 720,
+      "height": 480
+    },
+    "umbrella-19": {
+      "length": 2868,
+      "width": 1280,
+      "height": 720
+    },
+    "umbrella-9": {
+      "length": 1615,
+      "width": 960,
+      "height": 720
+    },
+    "volleyball": {
+      "length": 978,
+      "width": 1280,
+      "height": 720
+    },
+    "volleyball-18": {
+      "length": 2606,
+      "width": 1280,
+      "height": 720
+    },
+    "volleyball-19": {
+      "length": 1467,
+      "width": 1280,
+      "height": 720
+    },
+    "whitefish": {
+      "length": 220,
+      "width": 1280,
+      "height": 720
+    },
+    "wiper": {
+      "length": 341,
+      "width": 640,
+      "height": 480
+    },
+    "wubble_bubble": {
+      "length": 500,
+      "width": 960,
+      "height": 540
+    },
+    "yoyo-7": {
+      "length": 3806,
+      "width": 1280,
+      "height": 720
+    },
+    "zebra-10": {
+      "length": 2008,
+      "width": 1280,
+      "height": 720
+    },
+    "zebra-16": {
+      "length": 1282,
+      "width": 1280,
+      "height": 720
+    },
+    "zebrafish1": {
+      "length": 400,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "results": {
+    "baseline": {
+      "parameters": {
+        "realtime": null,
+        "noise": null,
+        "inject": null,
+        "transformers": [],
+        "analyses": [],
+        "ignore_special": true,
+        "repetitions": 1,
+        "early_stop": true,
+        "multiobject": true
+      },
+      "type": "vot.experiment.multirun.UnsupervisedExperiment",
+      "results": []
+    },
+    "realtime": {
+      "parameters": {
+        "realtime": {
+          "grace": 3,
+          "fps": 20.0
+        },
+        "noise": null,
+        "inject": null,
+        "transformers": [],
+        "analyses": [],
+        "ignore_special": true,
+        "repetitions": 1,
+        "early_stop": true,
+        "multiobject": true
+      },
+      "type": "vot.experiment.multirun.UnsupervisedExperiment",
+      "results": []
+    }
+  }
+}

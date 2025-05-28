@@ -1,11 +1,14 @@
 import os
 from collections import OrderedDict
-try:
-    from torch.utils.tensorboard import SummaryWriter
-except:
-    print('WARNING: You are using tensorboardX instead sis you have a too old pytorch version.')
-    from tensorboardX import SummaryWriter
 
+try:
+    try:
+        from torch.utils.tensorboard import SummaryWriter
+    except:
+        print('WARNING: You are using tensorboardX instead sis you have a too old pytorch version.')
+        from tensorboardX import SummaryWriter
+except:
+    print("Don't care for tensorboard")
 
 class TensorboardWriter:
     def __init__(self, directory, loader_names):

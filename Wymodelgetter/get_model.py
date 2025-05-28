@@ -95,7 +95,7 @@ def load_state_dict_from_file(file: str, only_state_dict=True) -> Dict[str, torc
     return checkpoint
 
 
-def get_lowformer(config_path="Wymodelgetter/configs/b3.yaml", checkpoint_path="Wymodelgetter/checkpoints/b3/evalmodel.pt", cfg=None):
+def get_lowformer(config_path="/home/moritz/Research/SMAT/Wymodelgetter/configs/b3.yaml", checkpoint_path="/home/moritz/Research/SMAT/Wymodelgetter/checkpoints/b3/evalmodel.pt", cfg=None):
     
     config = setup_exp_config(config_path, recursive=True, opt_args=None)
     
@@ -116,7 +116,11 @@ def get_lowformer(config_path="Wymodelgetter/configs/b3.yaml", checkpoint_path="
         else:
             model.max_stage_id = 3
             model.stages = model.stages[:-1]
-    model.cut_stages()
+            
+    if cfg.MODEL.BACKBONE.EFFTRACK:
+        model.cut_stages()
+    else:
+        model.remove_stage(1)
             
     # print(model)
     inp = torch.randn(1,3,224,224)
@@ -124,7 +128,7 @@ def get_lowformer(config_path="Wymodelgetter/configs/b3.yaml", checkpoint_path="
     try:
         print("Init | Backbone output shape:",out.shape)
     except:
-        print(out[list(out.keys())[-1]].shape)
+        print("get_model.py",out[list(out.keys())[-1]].shape)
     # print("Init | Backbone output shape:",out.shape)
     return model
 

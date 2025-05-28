@@ -281,7 +281,9 @@ class LowFormerBackbone(nn.Module):
     def cut_stages(self):
         self.left_stages = self.stages[self.max_stage_id:]
         self.stages = self.stages[:self.max_stage_id]
-        
+    def remove_stage(self, n):
+        assert n > 0
+        self.stages = self.stages[:-n]
     
     def forward(self, x: torch.Tensor, multi_scale=False) -> Dict[int, torch.Tensor]:
         # if x.shape[0] > 5:

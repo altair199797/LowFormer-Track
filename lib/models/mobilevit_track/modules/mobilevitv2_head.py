@@ -229,9 +229,9 @@ class LowFormerHeadModule(BaseModule):
         score_map_ctr, size_map, offset_map = self.get_score_map(x_cls, x_reg)
 
         # assert gt_score_map is None
-        bbox = self.cal_bbox(score_map_ctr, size_map, offset_map)
+        bbox, max_score = self.cal_bbox(score_map_ctr, size_map, offset_map)
 
-        return score_map_ctr, bbox, size_map, offset_map
+        return score_map_ctr, bbox, size_map, offset_map, max_score
 
     def forward(
         self, x: Union[Tensor, Tuple[Tensor]], *args, **kwargs
@@ -243,7 +243,7 @@ class LowFormerHeadModule(BaseModule):
         else:
             raise NotImplementedError
 
-    def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=False):
+    def cal_bbox(self, score_map_ctr, size_map, offset_map, return_score=True):
         max_score, idx = torch.max(score_map_ctr.flatten(1), dim=1, keepdim=True)
         idx_y = idx // self.feat_sz
         idx_x =  idx - (idx // self.feat_sz) * self.feat_sz

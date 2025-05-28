@@ -7,3 +7,7 @@ tensorboard/
 *.pyc
 *.pth
 *.tar
+VOT_workspace/sequences
+VOT_testworkspace/sequences
+VOT_workspace/results
+VOT_testworkspace/results
