@@ -1,17 +1,12 @@
-# [Separable Self and Mixed Attention Transformers for Efficient Object Tracking](https://openaccess.thecvf.com/content/WACV2024/papers/Gopal_Separable_Self_and_Mixed_Attention_Transformers_for_Efficient_Object_Tracking_WACV_2024_paper.pdf) [WACV2024] 
-# Official implementation
-![SMAT_block](assets/SMAT_block.png)
+# LowFormer-Track - ADAPTATION OF SMAT Tracker
 
-## News
-**`09-04-2024`**: C++ implementation of SMAT is available [here](https://github.com/goutamyg/MVT.cpp)
 
-**`07-09-2023`**: The paper is available on [arXiv](https://arxiv.org/abs/2309.03979) now
+## Thanks to the authors
+The code is based upon the paper Separable Self and Mixed Attention Transformers for Efficient Object Tracking paper. Thanks for the authors to share their code!
 
-**`28-08-2023`**: The pretrained tracker model is released
+## VOT Integration
 
-**`17-08-2023`**: The SMAT tracker training and inference code is released
-
-**`14-08-2023`**: The paper is accepted at WACV2024
+The tracker integration is in `VOT_workspace/lowform_track_integration_multiobject.py`.
 
 ## Installation
 
