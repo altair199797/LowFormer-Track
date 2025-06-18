@@ -11,3 +11,8 @@ VOT_workspace/sequences
 VOT_testworkspace/sequences
 VOT_workspace/results
 VOT_testworkspace/results
+TAM_segmentor/
+VOT_TAMworkspace/results
+VOT_TAMworkspace/sequences
+*.zip
+VOT_workspace/LowFormerTrack_MOT_2025-05-28T11-57-04.600132
