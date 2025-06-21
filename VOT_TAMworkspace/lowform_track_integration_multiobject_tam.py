@@ -85,9 +85,12 @@ def build_tam():
     EfficientTAMImagePredictor,
 )
     
-    checkpoint = "/home/moritz/Research/SMAT/TAM_segmentor/EfficientTAM/checkpoints/efficienttam_s.pt"
-    model_cfg = "/home/moritz/Research/SMAT/TAM_segmentor/EfficientTAM/efficient_track_anything/configs/efficienttam/efficienttam_s.yaml"
-    model_cfg = "configs/efficienttam/efficienttam_s.yaml"
+    checkpoint = "/home/moritz/Research/SMAT/TAM_segmentor/EfficientTAM/checkpoints/efficienttam_ti_512x512.pt"
+    model_cfg = "configs/efficienttam/efficienttam_ti_512x512.yaml"
+    
+    # checkpoint = "/home/moritz/Research/SMAT/TAM_segmentor/EfficientTAM/checkpoints/efficienttam_s.pt"
+    # model_cfg = "configs/efficienttam/efficienttam_s.yaml"
+    
     
     # import hydra
     # hydra.core.global_hydra.GlobalHydra.instance().clear()
