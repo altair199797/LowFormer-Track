@@ -7,6 +7,8 @@ The code is based upon the paper Separable Self and Mixed Attention Transformers
 ## VOT Integration
 
 The tracker integration is in `VOT_TAMworkspace/lowform_track_integration_multiobject_tam.py`.
+The checkpoint can be found [here](https://www.dropbox.com/t/ZNPnw3eI6xU6SC66). It only needs to be put in the folder `output/checkpoints/train/mobilevitv2_track/mobilevitv2_256_128x1_ep300_lasot_got_coco_lowformit_b15`, where the `here_comes_the_checkpoint.txt` file is.
+But checkpoint path can also be customized in `lib/test/tracker/VOT_lowformer_track.py` at line 51.
 
 ## Installation
 
