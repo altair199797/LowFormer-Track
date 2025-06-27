@@ -6,7 +6,7 @@ The code is based upon the paper Separable Self and Mixed Attention Transformers
 
 ## VOT Integration
 
-The tracker integration is in `VOT_workspace/lowform_track_integration_multiobject.py`.
+The tracker integration is in `VOT_TAMworkspace/lowform_track_integration_multiobject_tam.py`.
 
 ## Installation
 
