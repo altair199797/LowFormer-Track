@@ -1,0 +1,186 @@
+Metadata-Version: 2.4
+Name: efficient_track_anything
+Version: 1.0
+Summary: Efficient Track Anything
+Home-page: https://yformer.github.io/efficient-track-anything/
+Author: Meta AI
+Author-email: yunyang@meta.com
+License: Apache 2.0
+Requires-Python: >=3.10.0
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch>=2.5.1
+Requires-Dist: torchvision>=0.20.1
+Requires-Dist: numpy>=1.24.4
+Requires-Dist: tqdm>=4.66.1
+Requires-Dist: hydra-core>=1.3.2
+Requires-Dist: iopath>=0.1.10
+Requires-Dist: pillow>=9.4.0
+Requires-Dist: huggingface-hub==0.26.2
+Requires-Dist: iopath>=0.1.10
+Requires-Dist: pillow>=9.4.0
+Requires-Dist: gradio==4.44.0
+Requires-Dist: gradio_client==1.3.0
+Requires-Dist: gradio_image_prompter==0.1.0
+Requires-Dist: imageio==2.9.0
+Requires-Dist: imageio-ffmpeg==0.5.1
+Requires-Dist: opencv-python>=4.7.0
+Requires-Dist: moviepy==1.0.3
+Requires-Dist: supervision==0.25.0
+Provides-Extra: notebooks
+Requires-Dist: matplotlib>=3.9.1; extra == "notebooks"
+Requires-Dist: jupyter>=1.0.0; extra == "notebooks"
+Requires-Dist: opencv-python>=4.7.0; extra == "notebooks"
+Requires-Dist: eva-decord>=0.6.1; extra == "notebooks"
+Provides-Extra: interactive-demo
+Requires-Dist: Flask>=3.0.3; extra == "interactive-demo"
+Requires-Dist: Flask-Cors>=5.0.0; extra == "interactive-demo"
+Requires-Dist: av>=13.0.0; extra == "interactive-demo"
+Requires-Dist: dataclasses-json>=0.6.7; extra == "interactive-demo"
+Requires-Dist: eva-decord>=0.6.1; extra == "interactive-demo"
+Requires-Dist: gunicorn>=23.0.0; extra == "interactive-demo"
+Requires-Dist: imagesize>=1.4.1; extra == "interactive-demo"
+Requires-Dist: pycocotools>=2.0.8; extra == "interactive-demo"
+Requires-Dist: strawberry-graphql>=0.243.0; extra == "interactive-demo"
+Provides-Extra: dev
+Requires-Dist: black==24.2.0; extra == "dev"
+Requires-Dist: usort==1.0.2; extra == "dev"
+Requires-Dist: ufmt==2.0.0b2; extra == "dev"
+Requires-Dist: fvcore>=0.1.5.post20221221; extra == "dev"
+Requires-Dist: pandas>=2.2.2; extra == "dev"
+Requires-Dist: scikit-image>=0.24.0; extra == "dev"
+Requires-Dist: tensorboard>=2.17.0; extra == "dev"
+Requires-Dist: pycocotools>=2.0.8; extra == "dev"
+Requires-Dist: tensordict>=0.6.0; extra == "dev"
+Requires-Dist: opencv-python>=4.7.0; extra == "dev"
+Requires-Dist: submitit>=1.5.1; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Efficient Track Anything
+[[`📕Project`](https://yformer.github.io/efficient-track-anything/)][[`🤗Gradio Demo`](https://10f00f01361a8328a4.gradio.live)][[`📕Paper`](https://arxiv.org/pdf/2411.18933)][[`🤗Checkpoints`]](https://huggingface.co/yunyangx/efficient-track-anything/tree/main)
+
+The **Efficient Track Anything Model(EfficientTAM)** takes a vanilla lightweight ViT image encoder. An efficient memory cross-attention is proposed to further improve the efficiency. Our EfficientTAMs are trained on SA-1B (image) and SA-V (video) datasets. EfficientTAM achieves comparable performance with SAM 2 with improved efficiency. Our EfficientTAM can run **>10 frames per second** with reasonable video segmentation performance on **iPhone 15**. Try our demo with a family of EfficientTAMs at [[`🤗Gradio Demo`](https://10f00f01361a8328a4.gradio.live)].
+
+![Efficient Track Anything design](figs/examples/overview.png)
+
+## News
+[Jan.5 2025] We add the support for running Efficient Track Anything on Macs with MPS backend. Check the example [app.py](https://github.com/yformer/EfficientTAM/blob/main/app.py).
+
+[Jan.3 2025] We update the codebase of Efficient Track Anything, adpated from the latest [SAM2](https://github.com/facebookresearch/sam2) codebase with improved inference efficiency. Check the latest [SAM2](https://github.com/facebookresearch/sam2) update on Dec. 11 2024 for details. Thanks to SAM 2 team!
+
+![Efficient Track Anything Speed Update](figs/examples/speed_vs_latency_update.png)
+
+[Dec.22 2024] We release [`🤗Efficient Track Anything Checkpoints`](https://huggingface.co/yunyangx/efficient-track-anything/tree/main).
+
+[Dec.4 2024] [`🤗Efficient Track Anything for segment everything`](https://5239f8e221db7ee8a0.gradio.live/). Thanks to @SkalskiP!
+
+[Dec.2 2024] We provide the preliminary version of Efficient Track Anything for demonstration.
+
+## Online Demo & Examples
+Online demo and examples can be found in the [project page](https://yformer.github.io/efficient-track-anything/).
+
+## EfficientTAM Video Segmentation Examples
+  |   |   |
+:-------------------------:|:-------------------------:
+SAM 2 | ![SAM2](figs/examples/sam2_video_segmentation.png)
+EfficientTAM |  ![EfficientTAM](figs/examples/efficienttam_video_segmentation.png)
+
+## EfficientTAM Image Segmentation Examples
+Input Image, SAM, EficientSAM, SAM 2, EfficientTAM
+  |   |   |
+:-------------------------:|:-------------------------:
+Point-prompt | ![point-prompt](figs/examples/demo_img_point.png)
+Box-prompt |  ![box-prompt](figs/examples/demo_img_box.png)
+Segment everything |![segment everything](figs/examples/demo_img_everything.png)
+
+## Model
+EfficientTAM checkpoints are available at the [Hugging Face Space](https://huggingface.co/yunyangx/efficient-track-anything/tree/main).
+
+## Getting Started
+
+### Installation
+
+```bash
+git clone https://github.com/yformer/EfficientTAM.git
+cd EfficientTAM
+conda create -n efficient_track_anything python=3.12
+conda activate efficient_track_anything
+pip install -e .
+```
+### Download Checkpoints
+
+```bash
+cd checkpoints
+./download_checkpoints.sh
+```
+
+We can benchmark FPS of efficient track anything models on GPUs and model size.
+
+### FPS Benchmarking and Model Size
+
+```bash
+cd ..
+python efficient_track_anything/benchmark.py
+```
+
+### Launching Gradio Demo Locally
+For efficient track anything video, run
+```
+python app.py
+```
+For efficient track anything image, run
+```
+python app_image.py
+```
+
+
+### Building Efficient Track Anything
+You can build efficient track anything model with a config and initial the model with a checkpoint,
+```python
+import torch
+
+from efficient_track_anything.build_efficienttam import (
+    build_efficienttam_video_predictor,
+)
+
+checkpoint = "./checkpoints/efficienttam_s.pt"
+model_cfg = "configs/efficienttam/efficienttam_s.yaml"
+
+predictor = build_efficienttam_video_predictor(model_cfg, checkpoint)
+```
+
+### Efficient Track Anything Notebook Example
+The notebook is shared [here](https://github.com/yformer/EfficientTAM/blob/main/notebooks)
+
+## License
+Efficient track anything checkpoints and codebase are licensed under [Apache 2.0](./LICENSE).
+
+## Acknowledgement
+
++ [SAM2](https://github.com/facebookresearch/sam2)
++ [SAM2-Video-Predictor](https://huggingface.co/spaces/fffiloni/SAM2-Video-Predictor)
++ [florence-sam](https://huggingface.co/spaces/SkalskiP/florence-sam)
++ [SAM](https://github.com/facebookresearch/segment-anything)
++ [EfficientSAM](https://github.com/yformer/EfficientSAM)
+
+If you're using Efficient Track Anything in your research or applications, please cite using this BibTeX:
+```bibtex
+
+
+@article{xiong2024efficienttam,
+  title={Efficient Track Anything},
+  author={Yunyang Xiong, Chong Zhou, Xiaoyu Xiang, Lemeng Wu, Chenchen Zhu, Zechun Liu, Saksham Suri, Balakrishnan Varadarajan, Ramya Akula, Forrest Iandola, Raghuraman Krishnamoorthi, Bilge Soran, Vikas Chandra},
+  journal={preprint arXiv:2411.18933},
+  year={2024}
+}
+```
