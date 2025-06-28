@@ -81,8 +81,8 @@ def create_cls_model(name: str, pretrained=True, weight_url: str or None = None,
                 weight = load_state_dict_from_file(weight_url)
                 model.load_state_dict(weight, strict=False)
     except Exception as e:
-        print("Model weights could not be loaded!!!!!!!!!!!!!!!!!!!",e)
-        assert False
+        print("LowFormer backbone Model weights could not be loaded!!!!!!!!!!!!!!!!!!!",e)
+        #assert False
     return model
 
 def load_state_dict_from_file(file: str, only_state_dict=True) -> Dict[str, torch.Tensor]:
@@ -95,7 +95,7 @@ def load_state_dict_from_file(file: str, only_state_dict=True) -> Dict[str, torc
     return checkpoint
 
 
-def get_lowformer(config_path="/home/moritz/Research/SMAT/Wymodelgetter/configs/b3.yaml", checkpoint_path="/home/moritz/Research/SMAT/Wymodelgetter/checkpoints/b3/evalmodel.pt", cfg=None):
+def get_lowformer(config_path="../Wymodelgetter/configs/b3.yaml", checkpoint_path="../Wymodelgetter/checkpoints/b3/evalmodel.pt", cfg=None):
     
     config = setup_exp_config(config_path, recursive=True, opt_args=None)
     

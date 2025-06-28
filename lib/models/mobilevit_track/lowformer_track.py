@@ -285,7 +285,7 @@ class LowFormer_Track(nn.Module):
 
 from Wymodelgetter.get_model import get_lowformer
 def build_lowformer_backbone(type, cfg):
-    return get_lowformer(config_path="/home/moritz/Research/SMAT/Wymodelgetter/configs/"+type+".yaml", checkpoint_path="/home/moritz/Research/SMAT/Wymodelgetter/checkpoints/"+type+"/evalmodel.pt", cfg=cfg)
+    return get_lowformer(config_path="../Wymodelgetter/configs/"+type+".yaml", checkpoint_path="../Wymodelgetter/checkpoints/"+type+"/evalmodel.pt", cfg=cfg)
     
 
 def show_params_flops(model, cfg):
