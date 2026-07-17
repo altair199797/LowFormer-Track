@@ -1,0 +1,42 @@
+data_provider:
+  rrc_config:
+    test_crop_ratio: 0.95
+  n_worker: 8
+  base_batch_size: 128
+
+net_config:
+  name: b1
+  dropout: 0
+  bb_convattention: True    # my attention
+  bb_convin2: True
+  grouping: 1
+  fastit: True
+  fastitv2: False
+  bigit: True
+  smallv2: True
+  model_mult: 1.0
+
+  bb_moreatten: 0
+
+  mscale: False
+  head_dim_mul: False
+  actit: False
+  bb_smbconv: None #vitblocks # or None|vitblocks|all
+  add_smconv: False    # add smconv to effvitblock and after in all convstages
+  smconv_after: True # after mbconv for convstages
+  smconv_pos: befAtt # befAtt|aftAtt|aftMBconv  position in effvitblock
+  smconv_dw: False
+  without_mbconv: False
+  only_smconv: False     # attention in earlier stages
+  bb_normal_ds: False    # dw conv dowsampling instead of mbconv
+  vitafter2: False  # vit after stage 2
+  vitafter22: False
+  vitafter1: False  # vit after stage 1 and 2 (needs vitafter2)
+  sha: False    # single-head-attention
+   # evalimagesize=256 #1.49 
+
+
+run_config:
+  n_epochs: 300
+  base_lr: 0.00025
+  # eval_image_size:

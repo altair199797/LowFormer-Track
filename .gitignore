@@ -1,0 +1,17 @@
+lib/test/evaluation/local.py
+lib/train/admin/local.py
+*.pt
+output/
+tensorboard/
+*.onnx
+*.pyc
+*.pth
+*.tar
+VOT_workspace/sequences
+VOT_testworkspace/sequences
+VOT_workspace/results
+VOT_testworkspace/results
+VOT_TAMworkspace/results
+VOT_TAMworkspace/sequences
+*.zip
+VOT_workspace/LowFormerTrack_MOT_2025-05-28T11-57-04.600132

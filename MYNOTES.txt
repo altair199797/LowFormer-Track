@@ -1,0 +1,9 @@
+
+
+
+python tracking/train.py --script mobilevitv2_track --config mobilevitv2_256_128x1_ep300_mine --save_dir ./output --mode single
+
+
+
+
+python tracking/test.py --tracker_name mobilevitv2_track --tracker_param mobilevitv2_256_128x1_ep300_mine --dataset otb --threads 10 --force_eval
