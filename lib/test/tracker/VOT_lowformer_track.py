@@ -284,6 +284,14 @@ def lowformer_track_imple():
     
     model = MobileViTv2Track( params, None, test=False, args=None)
     print(model)
+    # model = torch.jit.script(model)
+    # model.track = torch.compile(
+    #     model.track,
+    #     # mode="max-autotune",
+    #     fullgraph=False,
+    #     dynamic=False,
+    #         )
+    
     return model
     
 if __name__ == "__main__":

@@ -96,7 +96,7 @@ class EfficientTAMBase(torch.nn.Module):
         no_obj_embed_spatial: bool = False,
         # extra arguments used to construct the SAM mask decoder; if not None, it should be a dict of kwargs to be passed into `MaskDecoder` class.
         sam_mask_decoder_extra_args=None,
-        compile_image_encoder: bool = False,
+        compile_image_encoder: bool = True,
     ):
         super().__init__()
 
